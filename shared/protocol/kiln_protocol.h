@@ -19,7 +19,13 @@ enum MessageType : uint8_t {
   MSG_FAULT = 0x04,
   MSG_ACK = 0x05,
   MSG_COMMAND = 0x10,
-  MSG_GET_STATUS = 0x11
+  MSG_GET_STATUS = 0x11,
+  MSG_PROFILE_BEGIN = 0x20,
+  MSG_PROFILE_SEGMENT = 0x21,
+  MSG_PROFILE_COMMIT = 0x22,
+  MSG_ZONE_CONFIG = 0x23,
+  MSG_SENSOR_CONFIG = 0x24,
+  MSG_SAFETY_CONFIG = 0x25
 };
 
 enum Command : uint8_t {
