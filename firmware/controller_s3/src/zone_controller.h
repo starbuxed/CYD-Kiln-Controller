@@ -12,7 +12,7 @@ class ZoneController {
   bool configure(const ZoneConfig& config);
   bool update(uint32_t nowMs, float temperatureC, float setpointC,
               bool sensorValid, bool heatPermitted);
-  void forceOff() { outputOn_ = false; lastChangeMs_ = 0; }
+  void forceOff();
   bool outputOn() const { return outputOn_; }
   bool configured() const { return configured_; }
  private:
@@ -21,5 +21,6 @@ class ZoneController {
   bool outputOn_;
   bool hasChanged_;
   uint32_t lastChangeMs_;
+  uint32_t lastUpdateMs_;
 };
 } // namespace kiln
