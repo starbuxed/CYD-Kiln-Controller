@@ -67,7 +67,7 @@ bool KilnControlCore::configureZone(uint8_t zone,
 }
 bool KilnControlCore::sensorsValid(uint8_t validMask, uint8_t requiredMask) const {
   requiredMask &= 0x0F;
-  return requiredMask != 0 && (validMask & requiredMask) == requiredMask;
+  return (validMask & requiredMask) == requiredMask;
 }
 bool KilnControlCore::start(uint32_t nowMs, const float temps[4],
                             uint8_t validMask, bool linkHealthy) {
