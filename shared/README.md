@@ -1,6 +1,6 @@
 # Shared Definitions
 
-This directory contains definitions shared by ESP32 and Pro Micro firmware and by host-side tests.
+This directory contains definitions shared by the CYD ESP32, dedicated ESP32-S3 controller, and host-side tests.
 
 Keep these items language-neutral wherever possible:
 - Protocol version and message type registry.
