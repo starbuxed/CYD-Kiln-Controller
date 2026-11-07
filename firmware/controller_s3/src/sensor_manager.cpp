@@ -8,7 +8,7 @@ SensorManager::SensorManager() {
     channels_[i].type = TC_K;
     channels_[i].reading = {0.0f, 0, SENSOR_NOT_CONFIGURED, false};
     channels_[i].configured = false;
-    channels_[i].mode = SENSOR_MODE_OFF;
+    channels_[i].mode = SENSOR_MODE_LOG_SAFETY;
     channels_[i].calibrationOffsetC = 0.0f;
     channels_[i].hasPrevious = false;
     channels_[i].previousC = 0.0f;
