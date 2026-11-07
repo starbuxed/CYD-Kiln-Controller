@@ -15,7 +15,7 @@ Every physical sensor has one operating mode, selected independently of zone ass
 
 **Off is the only mode that disables monitoring.** Every other mode continues acquiring and logging the sensor's readings and faults.
 
-A sensor in **Log and safety** mode is independently checked for sensor faults, stale readings, implausible readings, and overtemperature, regardless of whether it is assigned to a zone. A sensor in **Log and control** mode is eligible for PID only in zones where it is selected, but it does not independently trip kiln safety. These are intentionally separate responsibilities.
+A sensor in **Log and safety** mode is independently checked for sensor faults, stale readings, implausible readings, and overtemperature, regardless of whether it is assigned to a zone. A sensor in **Log and control** mode is eligible for PID only in zones where it is selected and remains independently checked for sensor faults, stale readings, implausible readings, and overtemperature. A sensor in **Log and safety** mode receives the same independent safety checks but is never used for PID.
 
 Newly configured sensors default to **Log and safety**. Changing a sensor mode invalidates its previous sample; a fresh valid sample is required before it can be used again.
 
@@ -35,7 +35,7 @@ Newly configured sensors default to **Log and safety**. Changing a sensor mode i
 - **Lowest:** the coolest assigned sensor controls the zone.
 - **Average:** the arithmetic mean controls the zone.
 
-Only sensors in **Log and control** mode may contribute to PID. For highest, lowest, and average, every selected control sensor must be valid. Independent safety supervision checks sensors in **Log and safety** mode individually; aggregation must never hide an overtemperature.
+Only sensors in **Log and control** mode may contribute to PID. For highest, lowest, and average, every selected control sensor must be valid. Independent safety supervision checks sensors in both **Log and control** and **Log and safety** modes individually; aggregation must never hide an overtemperature.
 
 ## Examples
 
@@ -51,4 +51,4 @@ Masks are shown with bit 0 on the right (sensor/output 1).
 
 ## Implementation status
 
-The hardware-independent `ZoneMapping` module validates mappings and calculates zone measurements. It is covered by native tests. The existing kiln control core still uses its earlier one-zone/one-sensor/one-output loop and must next be refactored to consume this mapping layer before this feature is active in firing control. Per-sensor operating modes and their independent monitoring/control/safety masks are implemented in `SensorManager`; the S3 safety and control integration and configuration-protocol/UI wiring remain to be completed. The S3 controller remains non-operational for firing until those integrations, hardware configuration, and safety validation are complete.
+The hardware-independent `ZoneMapping` module validates mappings and calculates zone measurements. It is covered by native tests but is not yet integrated into the firing core. Per-sensor operating modes, UART configuration, status telemetry, PID eligibility, and independent safety-mask enforcement are implemented. The CYD touchscreen/browser selector is not yet implemented. The S3 controller remains non-operational for firing until hardware configuration and end-to-end safety validation are complete.
