@@ -4,7 +4,7 @@
 
 There is one master-power permit relay controlled by the CYD main board and one controlled by the ESP32-S3 secondary board. These are not extra heating-zone outputs.
 
-The two relay coils are controlled independently. Their normally-open (NO) contacts are wired in series in the master power-contactor control circuit. Both relays must be energized before the contactor can energize.
+The two relay coils are controlled independently. Their normally-open (NO) contacts are wired in series in the master power-contactor control circuit. Both relays must be energized before the contactor can energize. They are dedicated power-permit relays, not heating-zone relays.
 
 Conceptual control path:
 
