@@ -9,6 +9,7 @@ class ControllerLink {
              uint32_t baud = 115200);
   void update();
   void sendStatus();
+  bool hostLinkHealthy() const;
 
  private:
   void handleFrame(const kiln::Frame& frame);
