@@ -94,9 +94,9 @@ uint32_t ControllerLink::heartbeatAgeMs() const {
   if (!heartbeatSeen_) return UINT32_MAX;
   return static_cast<uint32_t>(millis() - lastHeartbeatRxMs_);
 }
-int16_t ControllerLink::temperatureCentiC(uint8_t channel) const {
+int16_t ControllerLink::temperatureDeciC(uint8_t channel) const {
   return channel < 4 ? temperatures_[channel] : 0;
 }
-int16_t ControllerLink::setpointCentiC(uint8_t channel) const {
+int16_t ControllerLink::setpointDeciC(uint8_t channel) const {
   return channel < 4 ? setpoints_[channel] : 0;
 }
