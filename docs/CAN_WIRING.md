@@ -1,92 +1,80 @@
-# CAN and Dual Shutdown Wiring Reference
+# CAN and Master-Power Permit Wiring Reference
 
-> This pin map is for the project's current reference targets only: classic 2.8-inch ESP32-2432S028R CYD (single ESP32-WROOM) as main, and Espressif ESP32-S3-DevKitC-1 as secondary. CYD clones/revisions vary. Confirm board markings and continuity against the actual hardware before soldering or connecting anything.
+> This reference is for the classic 2.8-inch ESP32-2432S028R CYD and ESP32-S3-DevKitC-1 only. Board revisions/clones vary. Check the actual schematic and connector markings.
 
-## 1. CYD main board
+## 1. CYD CAN connection
 
-The CYD has no CAN transceiver built in. Fit one external 3.3V-logic CAN transceiver module (for example, an SN65HVD230-based module after checking its exact schematic).
+The CYD has no CAN transceiver built in. Use one external transceiver compatible with ESP32 3.3V logic.
 
-| CYD signal | GPIO / connector | Transceiver connection |
-|---|---|---|
-| TWAI TX | GPIO27, CN1 | TXD input |
-| TWAI RX | GPIO22, CN1 | RXD output |
-| 3.3V | CN1 | VCC (only if module explicitly supports 3.3V) |
-| GND | CN1 | GND |
-
-For the common CN1 header, GPIO27 and GPIO22 are broken out. Confirm the connector orientation and pin order on the exact CYD revision. Do not infer connector position from a board photo alone.
-
-### CYD shutdown request
-
-The classic 2.8-inch CYD's easily accessible header pins are already used by CAN. The reference build therefore repurposes **GPIO4**, the active-low red RGB LED control, as the main-board shutdown-request signal. The red LED then doubles as a shutdown indicator.
-
-- Bring out GPIO4 from the exact board's LED/GPIO4 trace or suitable pad using a short, strain-relieved wire.
-- Use only as a low-voltage logic request into an appropriately designed isolated/interface stage.
-- Do not connect GPIO4 directly to a contactor coil, mains circuit, relay coil, or safety contact.
-- Do not exceed the GPIO's electrical limits or load it with an optocoupler LED without a correctly engineered current-limiting/buffer stage.
-- GPIO4 is configured as active-low open-drain in firmware. The external safety interface must define the safe condition for reset, high impedance, cable break, and loss of CYD power; firmware output alone does not provide that guarantee.
-
-If the physical CYD revision does not expose a usable GPIO4 connection, keep `KILN_MAIN_SHUTDOWN_REQUEST_PIN=-1` and do not claim the main hardwired request is wired. The physical latching E-stop must still interrupt the safety-contactor circuit directly.
-
-## 2. Secondary ESP32-S3 DevKitC-1
-
-The selected reference PlatformIO target uses the Espressif ESP32-S3-DevKitC-1. Its J1 header exposes GPIO4, GPIO5, and GPIO6.
-
-| ESP32-S3 signal | GPIO | Transceiver / safety interface |
+| CYD | GPIO | Transceiver |
 |---|---:|---|
-| TWAI TX | GPIO5 | CAN transceiver TXD input |
-| TWAI RX | GPIO4 | CAN transceiver RXD output |
-| 3.3V | 3V3 header | VCC (module must support 3.3V) |
-| GND | GND header | GND |
-| Secondary shutdown request | GPIO6 | Isolated low-voltage request interface |
+| TWAI TX | 27 | TXD input |
+| TWAI RX | 22 | RXD output |
+| 3.3V | 3V3 | VCC only if module supports 3.3V |
+| GND | GND | GND |
 
-GPIO4/5/6 are assigned only for this DevKitC-1 reference. If a different S3 board is used, re-verify every pin before changing build flags.
+GPIO27/22 are the project's reference pins for the classic CYD profile. Verify connector orientation and pin order on the exact board.
 
-## 3. CAN bus between transceivers
+## 2. Secondary ESP32-S3 CAN connection
 
-| Main-side transceiver | Secondary-side transceiver |
-|---|---|
-| CANH | CANH |
-| CANL | CANL |
-| Reference GND, if non-isolated design requires it | Reference GND |
+The current PlatformIO reference target is ESP32-S3-DevKitC-1.
 
-- Use twisted-pair cable for CANH/CANL.
-- Use a linear bus topology; keep stubs short.
-- Install 120-ohm termination at the two physical ends only. With two endpoints, one termination at each transceiver end.
-- Never add a 120-ohm resistor at every node.
-- Keep CAN wiring away from heater mains wiring, contactors, and high-current conductors.
-- Choose a transceiver/module with a suitable common-mode range and environmental rating. Consider galvanic isolation and isolated power where ground offsets/noise warrant it.
-- Firmware initially targets 500 kbit/s. Lower bitrate may be preferable for longer/noisier wiring after validation.
+| ESP32-S3 | GPIO | Transceiver |
+|---|---:|---|
+| TWAI TX | 5 | TXD input |
+| TWAI RX | 4 | RXD output |
+| 3.3V | 3V3 | VCC if module supports 3.3V |
+| GND | GND | GND |
 
-## 4. Independent shutdown circuit
+Each board requires its own external CAN transceiver. CANH connects to CANH and CANL to CANL. Use a twisted pair, short stubs, and exactly two 120-ohm terminators at the physical ends of a linear bus. Use a deliberate ground/reference or isolation scheme. Keep the CAN cable away from mains/heater wiring.
 
-The two GPIOs are **shutdown requests**, not power contacts:
+## 3. Two independent master-power permit relays
 
-- CYD GPIO4 -> main-board isolated request interface.
-- ESP32-S3 GPIO6 -> secondary-board isolated request interface.
-- Physical latching E-stop -> direct series interruption of the external safety-contactor control circuit.
-- Independent kiln high-limit -> independent hardware interruption path.
+There is one master-power permit relay driven by each board. These are not heater-zone outputs.
 
-The safety circuit must be engineered so either board request can de-energize its safety enable path. Do not connect the two GPIOs together. Do not use a GPIO as the only safety channel. Use an appropriate fail-safe energized-to-run architecture, hardware latching, and external monitoring so reset, loss of MCU power, or wire break cannot be mistaken for a healthy state.
+| Board | GPIO output | Purpose | Initial config |
+|---|---:|---|---|
+| CYD main | Not assigned (-1) | Drives CYD permit relay K1 | Disabled until exact CYD header pin is verified |
+| ESP32-S3 DevKitC-1 | GPIO7 | Drives S3 permit relay K2 | Reference pin; verify board and output-driver wiring |
 
-Both firmware images assert their request when they detect/receive an emergency shutdown. The secondary also turns all controlled outputs inactive and latches the fault. The E-stop and high-limit must function when both ESP32s are unpowered or crashed.
+Each GPIO drives only its own low-voltage relay-module input using a suitable protected interface. Each relay's normally-open dry contact is wired in series with the other relay's normally-open contact in the master power-contactor control circuit. Do not connect the two GPIOs together.
 
-## 5. First power-up checklist
+Conceptual control path:
 
-1. Keep kiln heater power disconnected.
-2. Verify CYD model and that CN1 GPIO27/GPIO22 and GPIO4 trace match this document.
-3. Verify DevKitC-1 board revision and J1 GPIO4/GPIO5/GPIO6 positions.
-4. Verify each transceiver supply voltage and TXD/RXD logic compatibility from its datasheet.
-5. Verify CANH/CANL polarity and exactly two end terminations.
-6. Power only the logic boards and test CAN heartbeat.
-7. Test fragmented status messages, missing heartbeat, malformed fragments, and bus-off behavior.
-8. Test each independent shutdown request with the isolated low-voltage safety-interface test fixture.
-9. Test physical E-stop and high-limit action independently of firmware.
-10. Test output channels with low-voltage indicator loads only.
+    Low-voltage control supply
+      -> Physical latching E-STOP (NC)
+      -> Independent kiln HIGH-LIMIT (NC)
+      -> CYD permit relay K1 (NO contact)
+      -> S3 permit relay K2 (NO contact)
+      -> Properly selected safety relay / contactor control input
+      -> Return
 
-Do not connect kiln heating power until the completed electrical design and independent safety circuit have been reviewed and tested by a qualified person.
+Both K1 and K2 must energize before the main contactor control path can close. If either ESP32 loses power, crashes, loses permission, or drops its relay, the series path opens.
+
+This is a functional concept, not a mains wiring plan. Select a suitable safety relay/contactor, protective components, monitoring/feedback, enclosure, and wiring under qualified electrical engineering review. Ordinary relays wired in series are not automatically a certified safety function; consider welded contacts, shorts, common-cause failures, and monitored force-guided contacts.
+
+The physical E-stop and independent high-limit must directly interrupt the safety-control path without either ESP32. Never use the MCU relay outputs to switch kiln mains directly.
+
+## 4. CYD permit pin
+
+The exact CYD revision is not confirmed. The CYD master-permit GPIO remains disabled as -1 until an exposed, unused output pin is selected and verified against the actual board. GPIO27 and GPIO22 are assigned to CAN in this reference profile. Do not repurpose display, touch, SD, backlight, boot-strapping, or input-only pins. Update KILN_MAIN_POWER_PERMIT_PIN only after verification.
+
+## 5. Startup and validation
+
+All outputs start released. CYD K1 is energized only while the S3 reports active FIRING state over a healthy CAN link and no fault is reported. S3 K2 is energized only while locally FIRING, all configured safety sensors are valid, local faults are clear, the CAN bus and host heartbeat are healthy, and all four output channels are configured. Reboot never restores an energized permit.
+
+Test with kiln mains disconnected:
+1. K1 alone energized: contactor control path remains open.
+2. K2 alone energized: contactor control path remains open.
+3. Both energized: contactor control request may close.
+4. Remove CYD power: path opens.
+5. Remove S3 power: path opens.
+6. Break CAN during firing simulation: both permits drop.
+7. Trigger local sensor/control fault: S3 permit drops; CYD drops when fault status arrives.
+8. Test physical E-stop and independent high-limit with both controllers disconnected.
+9. Verify reset/brownout and a disconnected wire yield the de-energized condition.
 
 ## References
 
-- [Espressif ESP32-S3-DevKitC-1 official hardware reference](https://documentation.espressif.com/api/resource/path/docs/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.0.html)
-- [CYD 2.8-inch connector and GPIO reference](https://github.com/khanhj/ESP32_2432S028/blob/main/PINS.md)
-- [CYD board pin mapping and SD/display peripherals](https://esp3d.io/esp3d-tft/version_1x/hardware/esp32/sunton-28-2432/)
+- [Espressif ESP32-S3-DevKitC-1 hardware reference](https://documentation.espressif.com/api/resource/path/docs/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.0.html)
+- [CYD 2.8-inch pin reference](https://github.com/witnessmenow/ESP32-Cheap-Yellow-Display)
