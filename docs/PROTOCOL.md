@@ -37,7 +37,7 @@ The shared implementation is shared/protocol/kiln_protocol.h. Frames with invali
 | PROFILE_COMMIT | 0x22 | CYD → S3 | Empty; validates and installs staged profile |
 | ZONE_CONFIG | 0x23 | CYD → S3 | Zone + hysteresis deci-C + min-on ms + min-off ms + setpoint offset deci-C |
 | SENSOR_CONFIG | 0x24 | CYD → S3 | Channel + thermocouple type + calibration offset deci-C |
-| SENSOR_MODE_CONFIG | 0x26 | CYD → S3 | Channel + operating mode (0=Off, 1=Log only, 2=Log and control, 3=Log and safety) |
+| SENSOR_MODE_CONFIG | 0x26 | CYD → S3 | Channel + operating mode (0=Off, 1=Log only, 2=Log and control (including safety), 3=Log and safety) |
 | SAFETY_CONFIG | 0x25 | CYD → S3 | Maximum allowed temperature deci-C u16/i16 |
 
 All multibyte integers are little-endian. Thermocouple type IDs are K=0, J=1, N=2, R=3, S=4, T=5, E=6, B=7.
@@ -65,7 +65,7 @@ The browser and CYD must never send raw GPIO values. The S3 validates typed requ
 | 5 | 8 | Four signed temperatures, deci-degrees C |
 | 13 | 8 | Four signed setpoints, deci-degrees C |
 | 21 | 4 | Per-channel sensor fault codes (see sensor manager enum) |
-| 25 | 4 | Per-channel operating modes: 0=Off, 1=Log only, 2=Log and control, 3=Log and safety |
+| 25 | 4 | Per-channel operating modes: 0=Off, 1=Log only, 2=Log and control (including safety), 3=Log and safety |
 
 Sensor fault codes are: 0=OK, 1=open circuit, 2=short (reserved for front ends that report it), 3=conversion/electrical fault, 4=stale sample, 5=out of range, 6=implausible rate, 7=not configured. A zero sensor-valid mask means no valid temperature channels are currently available. Zero temperature values are placeholders, not measured ambient readings. Output bits describe logical commands only, not verified physical relay state.
 
