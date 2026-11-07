@@ -26,7 +26,7 @@
 
 ## Not yet implemented or verified
 
-- Physical thermocouple acquisition driver. The sensor manager is ready to receive readings, but no MAX31856/MAX31865 or other hardware driver is connected.
+- MAX31856 SPI driver source is implemented with per-channel K/J/N/R/S/T/E/B selection and open/range fault mapping, but the S3 SPI and chip-select pins remain unset and no physical sensor modules have been tested.
 - Profile persistence in nonvolatile storage and the CYD-side profile editor/transfer workflow.
 - Verified physical GPIO assignments for the exact S3 board and external relay input interface.
 - CYD display/touchscreen UI, Wi-Fi setup, HTTP API, browser authentication, and live web updates.
