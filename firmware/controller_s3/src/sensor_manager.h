@@ -16,7 +16,7 @@ enum SensorFault : uint8_t {
 enum SensorOperatingMode : uint8_t {
   SENSOR_MODE_OFF = 0,          // No acquisition, logging, control, or safety supervision.
   SENSOR_MODE_LOG_ONLY = 1,     // Acquire and log; no control or safety trip.
-  SENSOR_MODE_LOG_CONTROL = 2,  // Acquire, log, and allow PID use; no safety trip.
+  SENSOR_MODE_LOG_CONTROL = 2,  // Acquire, log, allow PID use, and supervise safety.
   SENSOR_MODE_LOG_SAFETY = 3    // Acquire, log, and supervise faults/overtemperature; no PID use.
 };
 struct TemperatureReading {
