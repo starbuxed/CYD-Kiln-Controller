@@ -25,3 +25,17 @@ Begin with simulated sensor inputs and low-voltage indicator loads only.
 - Brownout and watchdog reset.
 
 Never use live heating elements as the initial test load. See [docs/SAFETY.md](../docs/SAFETY.md).
+
+
+## Protocol unit test
+
+The standalone C++ test in `tests/protocol/test_protocol.cpp` exercises frame encoding, byte-at-a-time parsing, and CRC rejection.
+
+From the repository root with a C++11 compiler:
+
+```sh
+g++ -std=c++11 -Ishared/protocol tests/protocol/test_protocol.cpp -o /tmp/kiln_protocol_test
+/tmp/kiln_protocol_test
+```
+
+This host-side test does not replace compiling both MCU firmware targets or testing on the exact physical boards.
