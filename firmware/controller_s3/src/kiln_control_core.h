@@ -3,7 +3,6 @@
 #include "profile_engine.h"
 #include "zone_controller.h"
 #include "safety_manager.h"
-
 namespace kiln {
 static constexpr uint8_t CONTROL_ZONE_COUNT = 4;
 struct ZoneRuntimeConfig {
@@ -19,15 +18,27 @@ class KilnControlCore {
   bool configureZone(uint8_t zone, const ZoneRuntimeConfig& config);
   bool start(uint32_t nowMs, const float temperaturesC[4],
              uint8_t sensorValidMask, bool hostLinkHealthy);
+  bool start(uint32_t nowMs, const float temperaturesC[4],
+             uint8_t sensorValidMask, uint8_t controlSensorMask,
+             uint8_t safetySensorMask, bool hostLinkHealthy);
   void update(uint32_t nowMs, const float temperaturesC[4],
               uint8_t sensorValidMask, bool hostLinkHealthy);
+  void update(uint32_t nowMs, const float temperaturesC[4],
+              uint8_t sensorValidMask, uint8_t controlSensorMask,
+              uint8_t safetySensorMask, bool hostLinkHealthy);
   bool pause(uint32_t nowMs);
   bool resume(uint32_t nowMs, const float temperaturesC[4],
               uint8_t sensorValidMask, bool hostLinkHealthy);
+  bool resume(uint32_t nowMs, const float temperaturesC[4],
+              uint8_t sensorValidMask, uint8_t controlSensorMask,
+              uint8_t safetySensorMask, bool hostLinkHealthy);
   void stop();
   void latchFault(uint16_t fault);
   bool acknowledgeFault(const float temperaturesC[4],
                        uint8_t sensorValidMask, bool hostLinkHealthy);
+  bool acknowledgeFault(const float temperaturesC[4],
+                       uint8_t sensorValidMask, uint8_t safetySensorMask,
+                       bool hostLinkHealthy);
   uint16_t faults() const { return safety_.faults(); }
   bool faulted() const { return safety_.faulted(); }
   ProfileRunState profileState() const { return profile_.state(); }
@@ -50,6 +61,6 @@ class KilnControlCore {
   float maximumAllowedC_;
   float soakToleranceC_;
   void allOff();
-  bool allSensorsValid(uint8_t mask) const;
+  bool sensorsValid(uint8_t validMask, uint8_t requiredMask) const;
 };
 } // namespace kiln
