@@ -55,8 +55,8 @@ The browser and CYD must never send raw GPIO values. The S3 validates typed requ
 | 1 | 2 | Fault flags (currently zero; fault manager pending) |
 | 3 | 1 | Sensor-valid bitmask (currently zero; sensor drivers pending) |
 | 4 | 1 | Commanded output bitmask |
-| 5 | 8 | Four signed temperatures, centi-degrees C |
-| 13 | 8 | Four signed setpoints, centi-degrees C |
+| 5 | 8 | Four signed temperatures, deci-degrees C |
+| 13 | 8 | Four signed setpoints, deci-degrees C |
 
 A zero sensor-valid mask means no valid temperature channels are currently available. Zero temperature values are placeholders, not measured ambient readings. Output bits describe logical commands only, not verified physical relay state.
 
