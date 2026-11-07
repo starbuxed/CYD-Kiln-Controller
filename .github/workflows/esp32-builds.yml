@@ -1,0 +1,22 @@
+name: ESP32 firmware builds
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  esp32-builds:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Install PlatformIO
+        run: pip install platformio
+      - name: Build dedicated ESP32-S3 controller
+        run: pio run -d firmware/controller_s3 -e controller_s3_devkitc1
+      - name: Build classic CYD operator interface
+        run: pio run -d firmware/esp32 -e cyd_28_ili9341_xpt2046
