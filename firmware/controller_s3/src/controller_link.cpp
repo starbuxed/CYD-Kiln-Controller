@@ -53,7 +53,7 @@ void ControllerLink::sendHeartbeat() {
 }
 
 void ControllerLink::sendStatus() {
-  // Fixed v1 status payload (25 bytes):
+  // Fixed v1 status payload (29 bytes):
   // state, fault flags u16, sensor-valid mask, output-command mask,
   // 4 temperatures, 4 setpoints, 4 sensor fault codes, 4 sensor modes.
   // Until sensor drivers are integrated, readings are marked invalid.
