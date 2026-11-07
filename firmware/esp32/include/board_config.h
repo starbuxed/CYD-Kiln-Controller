@@ -22,8 +22,22 @@
 #ifndef KILN_CAN_BITRATE
 #define KILN_CAN_BITRATE 500000
 #endif
+// GPIO16 is the common CYD onboard RGB green LED channel (active-low). It is
+// not on the normal expansion header; enabling this option requires a soldered
+// tap at the verified GPIO16/LED resistor pad and a high-impedance driver input.
+// Do not enable on a board revision that uses GPIO16 for another function.
+#ifndef KILN_CYD_USE_GPIO16_GREEN_LED_FOR_MASTER_PERMIT
+#define KILN_CYD_USE_GPIO16_GREEN_LED_FOR_MASTER_PERMIT 0
+#endif
 #ifndef KILN_MAIN_POWER_PERMIT_PIN
-#define KILN_MAIN_POWER_PERMIT_PIN -1
+  #if KILN_BOARD_PROFILE == KILN_BOARD_CYD_28_ILI9341_XPT2046 && \
+      KILN_CYD_USE_GPIO16_GREEN_LED_FOR_MASTER_PERMIT
+    #define KILN_MAIN_POWER_PERMIT_PIN 16
+    #define KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH 0
+  #else
+    #define KILN_MAIN_POWER_PERMIT_PIN -1
+    #define KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH 1
+  #endif
 #endif
 #ifndef KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH
 #define KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH 1
