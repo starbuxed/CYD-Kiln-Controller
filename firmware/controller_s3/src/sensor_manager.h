@@ -21,11 +21,13 @@ struct TemperatureReading {
 class SensorManager {
  public:
   SensorManager();
-  bool configure(uint8_t channel, ThermocoupleType type);
+  bool configure(uint8_t channel, ThermocoupleType type,
+                 float calibrationOffsetC = 0.0f);
   bool submitSample(uint8_t channel, float temperatureC,
                     SensorFault driverFault, uint32_t nowMs);
   void update(uint32_t nowMs);
   bool valid(uint8_t channel) const;
+  bool configured(uint8_t channel) const;
   uint8_t validMask() const;
   float temperatureC(uint8_t channel) const;
   SensorFault fault(uint8_t channel) const;
@@ -35,6 +37,7 @@ class SensorManager {
     ThermocoupleType type;
     TemperatureReading reading;
     bool configured;
+    float calibrationOffsetC;
     bool hasPrevious;
     float previousC;
     uint32_t previousAtMs;
