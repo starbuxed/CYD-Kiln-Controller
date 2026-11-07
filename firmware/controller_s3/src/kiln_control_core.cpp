@@ -18,6 +18,9 @@ bool KilnControlCore::configureProfile(const RampSoakSegment* segments,
   // Store the validated profile by starting only when START is requested.
   // ProfileEngine::start copies the segment array at that time; retain a
   // bounded copy here so configuration is independent of caller memory.
+  for (uint8_t i = 0; i < count; ++i) {
+    if (segments[i].targetC >= maximumAllowedC_) return false;
+  }
   configuredCount_ = count;
   for (uint8_t i = 0; i < count; ++i) configuredSegments_[i] = segments[i];
   profileConfigured_ = true;
@@ -95,6 +98,12 @@ bool KilnControlCore::resume(uint32_t nowMs, const float temps[4],
 void KilnControlCore::stop() {
   allOff();
   profile_.stop();
+  running_ = false;
+  paused_ = false;
+}
+void KilnControlCore::latchFault(uint16_t fault) {
+  safety_.latch(fault);
+  allOff();
   running_ = false;
   paused_ = false;
 }
