@@ -28,7 +28,7 @@ The shared implementation is shared/protocol/kiln_protocol.h. Frames with invali
 |---|---:|---|---|
 | HELLO | 0x01 | CYD → S3 | Protocol version byte |
 | HEARTBEAT | 0x02 | Both | CYD: uptime u32; S3: uptime u32 + state byte |
-| STATUS | 0x03 | S3 → CYD | Fixed 21-byte snapshot |
+| STATUS | 0x03 | S3 → CYD | Fixed 25-byte snapshot |
 | ACK | 0x05 | S3 → CYD | Command byte + result byte |
 | COMMAND | 0x10 | CYD → S3 | One command byte |
 | GET_STATUS | 0x11 | CYD → S3 | Empty |
@@ -53,7 +53,7 @@ All multibyte integers are little-endian. Thermocouple type IDs are K=0, J=1, N=
 
 The browser and CYD must never send raw GPIO values. The S3 validates typed requests and owns the controller state machine. Configuration is accepted only while IDLE. Profiles are staged by index and installed only after every segment is received and the complete profile validates. Zone, sensor, and safety settings are individually validated. START and RESUME now enter the local control core only when a complete profile, four zone configurations, four valid sensor readings, a healthy host link, and all four configured relay outputs are present. The current hardware build has no sensor driver or enabled relay pin map, so these checks intentionally keep firing blocked.
 
-## Status payload (21 bytes)
+## Status payload (25 bytes)
 
 | Offset | Size | Meaning |
 |---:|---:|---|
@@ -63,6 +63,7 @@ The browser and CYD must never send raw GPIO values. The S3 validates typed requ
 | 4 | 1 | Commanded output bitmask |
 | 5 | 8 | Four signed temperatures, deci-degrees C |
 | 13 | 8 | Four signed setpoints, deci-degrees C |
+| 21 | 4 | Per-channel sensor fault codes (see sensor manager enum) |
 
 A zero sensor-valid mask means no valid temperature channels are currently available. Zero temperature values are placeholders, not measured ambient readings. Output bits describe logical commands only, not verified physical relay state.
 
