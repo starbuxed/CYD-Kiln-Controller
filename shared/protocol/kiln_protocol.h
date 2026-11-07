@@ -34,7 +34,8 @@ enum Command : uint8_t {
   CMD_PAUSE = 0x02,
   CMD_RESUME = 0x03,
   CMD_STOP = 0x04,
-  CMD_ACK_FAULT = 0x05
+  CMD_ACK_FAULT = 0x05,
+  CMD_ESTOP = 0x06
 };
 
 enum ResultCode : uint8_t {
