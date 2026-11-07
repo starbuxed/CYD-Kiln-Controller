@@ -80,7 +80,7 @@ void setup() {
   Serial.printf("Relay output channels: %u\n", kiln::RELAY_OUTPUT_COUNT);
   Serial.printf("Output configuration valid: %s\n", outputsReady ? "yes" : "no");
   const bool sensorsReady = sensorFrontend.begin();
-  Serial.printf("MAX31856 front-end ready: %s\\n", sensorsReady ? "yes" : "no");
+  Serial.printf("MAX31856 front-end ready: %s\n", sensorsReady ? "yes" : "no");
   Serial.println("Configure per-channel thermocouple types before readings are accepted.");
   Serial.println("All relay outputs are disabled and unassigned.");
 
