@@ -17,6 +17,8 @@ int main() {
   assert(!engine.validate(profile, 33));
   RampSoakSegment bad = {200.0f, 0.0f, 0};
   assert(!engine.validate(&bad, 1));
+  RampSoakSegment soakOnly[] = {{100.0f, 100.0f, 0}, {100.0f, 0.0f, 600}};
+  assert(engine.validate(soakOnly, 2));
   assert(engine.start(profile, 2, 0.0f, 0));
   engine.update(1800000UL);
   assert(engine.state() == PROFILE_RAMPING);
@@ -25,8 +27,9 @@ int main() {
   assert(engine.state() == PROFILE_PAUSED);
   assert(engine.resume(2800000UL));
   engine.update(4600000UL);
-  assert(engine.state() == PROFILE_SOAKING);
-  engine.update(6600000UL);
+  assert(engine.state() == PROFILE_WAITING);
+  assert(engine.beginSoak(4600000UL));
+  engine.update(4602000UL);
   assert(engine.segmentIndex() == 1);
 
   ZoneController zone;
