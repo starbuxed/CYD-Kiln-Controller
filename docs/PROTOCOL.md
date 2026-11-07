@@ -46,11 +46,11 @@ All multibyte integers are little-endian. Thermocouple type IDs are K=0, J=1, N=
 
 | Command | ID | Current behavior |
 |---|---:|---|
-| START | 0x01 | Starts only when profile, four zone configs, four valid sensors, host link, and all four output channels are ready |
+| START | 0x01 | Starts only when profile, four zone configs, four valid PID-enabled sensors, all safety-enabled sensors valid, host link, and all four output channels are ready |
 | PAUSE | 0x02 | Accepted only while FIRING; forces outputs inactive |
 | RESUME | 0x03 | Resumes only from PAUSED after sensor and host-link checks |
 | STOP | 0x04 | Forces all outputs inactive and returns to IDLE unless fault-latched |
-| ACK_FAULT | 0x05 | Clears a latched fault only when all sensors are valid, below the safety limit, and host link is healthy |
+| ACK_FAULT | 0x05 | Clears a latched fault only when all Log and control / Log and safety sensors are valid and below the safety limit, and host link is healthy |
 
 The browser and CYD must never send raw GPIO values. The S3 validates typed requests and owns the controller state machine. Configuration is accepted only while IDLE. Profiles are staged by index and installed only after every segment is received and the complete profile validates. Zone, sensor, and safety settings are individually validated. START and RESUME now enter the local control core only when a complete profile, four zone configurations, all four valid PID-enabled sensor readings, all configured Log and safety sensors valid, a healthy host link, and all four configured relay outputs are present. The current hardware build has no sensor driver or enabled relay pin map, so these checks intentionally keep firing blocked.
 
