@@ -90,13 +90,15 @@ bool KilnControlCore::start(uint32_t nowMs, const float temps[4],
 }
 void KilnControlCore::update(uint32_t nowMs, const float temps[4],
                              uint8_t validMask, bool linkHealthy) {
-  if (!running_ || paused_) return;
+  if (!running_ && !paused_) return;
   safety_.update(nowMs, validMask, temps, linkHealthy, true, maximumAllowedC_);
   if (safety_.faulted()) {
     allOff();
     running_ = false;
+    paused_ = false;
     return;
   }
+  if (paused_) return;
   profile_.update(nowMs);
   if (profile_.state() == PROFILE_WAITING) {
     bool allZonesAtTarget = true;
