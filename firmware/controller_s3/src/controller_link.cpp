@@ -46,11 +46,11 @@ void ControllerLink::sendHeartbeat() {
 }
 
 void ControllerLink::sendStatus() {
-  // Fixed v1 status payload (22 bytes):
+  // Fixed v1 status payload (21 bytes):
   // state, fault flags u16, sensor-valid mask, output-command mask,
   // 4 temperatures in centi-degrees C, 4 setpoints in centi-degrees C.
   // Until sensor drivers are integrated, readings are marked invalid.
-  uint8_t payload[22] = {};
+  uint8_t payload[21] = {};
   payload[0] = static_cast<uint8_t>(controllerState);
   payload[1] = 0; payload[2] = 0; // fault flags
   payload[3] = 0; // sensor-valid mask: no hardware sensors implemented yet
