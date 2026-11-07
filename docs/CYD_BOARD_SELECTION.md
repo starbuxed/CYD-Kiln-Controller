@@ -11,7 +11,7 @@ The firmware provides selectable board profiles through PlatformIO environments.
 | `cyd_28_ili9341_xpt2046` | ESP32-2432S028R classic | ESP32-WROOM-32 | 2.8", 240×320, ILI9341 SPI | XPT2046 resistive | Reference profile; confirm batch |
 | `cyd_28_st7789_xpt2046` | 2.8" dual-USB / ST7789 revision | ESP32-WROOM-32 | 2.8", 240×320, ST7789 SPI | XPT2046 resistive | Controller and color/inversion need confirmation |
 | `cyd_28_ili9341_cst820` | ESP32-2432S028C capacitive variant | ESP32-WROOM-32 | 2.8", 240×320, ILI9341 SPI | CST820 capacitive | Pin map not enabled |
-| `cyd_35_st7796_xpt2046` | ESP32-3248S035R | ESP32-WROOM-32 family | 3.5", 320×480, ST7796 SPI | Resistive touch | Verify touch IC and pin map |
+| `cyd_24_family` | ESP32-2432S024 family | ESP32-WROOM-32 | 2.4\", ILI9341 or ST7789 SPI | N/R/C variants | Catalogued; pin map not verified |\n| `cyd_32_st7789` | ESP32-2432S032 family | ESP32-WROOM-32 | 3.2\", ST7789 SPI | Touch variant varies | Catalogued; pin map not verified |\n| `cyd_35_st7796_xpt2046` | ESP32-3248S035R | ESP32-WROOM-32 family | 3.5", 320×480, ST7796 SPI | Resistive touch | Verify touch IC and pin map |
 | `cyd_43_s3_rgb_gt911` | ESP32-8048S043 | ESP32-S3 | 4.3", 800×480 RGB | GT911 capacitive | Separate S3/RGB pin map required |
 | `cyd_70_s3_rgb_gt911` | ESP32-8048S070 | ESP32-S3 | 7.0", 800×480 RGB | GT911 capacitive | Separate S3/RGB pin map required |
 | `custom_cyd` | Custom / clone | User-defined | User-defined | User-defined | Requires local profile definition |
