@@ -113,4 +113,6 @@ struct Cyd28ClassicPins {
   static constexpr int8_t TOUCH_MISO = 39;
   static constexpr int8_t TOUCH_CS = 33;
   static constexpr int8_t TOUCH_IRQ = 36;
+  static constexpr int8_t UART_RX = 22;
+  static constexpr int8_t UART_TX = 27;
 };
