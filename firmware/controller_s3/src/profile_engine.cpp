@@ -3,7 +3,7 @@
 
 namespace kiln {
 ProfileEngine::ProfileEngine()
-    : count_(0), segmentIndex_(0), state_(PROFILE_IDLE), segmentStartC_(0),
+    : count_(0), segmentIndex_(0), state_(PROFILE_IDLE), stateBeforePause_(PROFILE_IDLE), segmentStartC_(0),
       setpointC_(0), phaseStartMs_(0), pausedAtMs_(0), pausedTotalMs_(0) {}
 
 bool ProfileEngine::validate(const RampSoakSegment* segments, uint8_t count) const {
@@ -12,8 +12,11 @@ bool ProfileEngine::validate(const RampSoakSegment* segments, uint8_t count) con
     const RampSoakSegment& s = segments[i];
     if (!isfinite(s.targetC) || !isfinite(s.rampCPerHour)) return false;
     if (s.targetC < 0.0f || s.targetC > PROFILE_MAX_TEMP_C) return false;
-    if (s.rampCPerHour <= 0.0f ||
+    if (s.rampCPerHour < 0.0f ||
         s.rampCPerHour > PROFILE_MAX_RAMP_C_PER_HOUR) return false;
+    if (s.rampCPerHour == 0.0f &&
+        (i == 0 || fabsf(s.targetC - segments[i - 1].targetC) >= 0.001f))
+      return false;
     if (s.holdSeconds > PROFILE_MAX_HOLD_SECONDS) return false;
   }
   return true;
@@ -45,7 +48,7 @@ bool ProfileEngine::beginSegment(uint8_t index, float startC, uint32_t nowMs) {
   setpointC_ = startC;
   phaseStartMs_ = nowMs;
   state_ = (fabsf(segments_[index].targetC - startC) < 0.001f)
-             ? PROFILE_SOAKING : PROFILE_RAMPING;
+             ? PROFILE_WAITING : PROFILE_RAMPING;
   return true;
 }
 
@@ -76,9 +79,7 @@ void ProfileEngine::update(uint32_t nowMs) {
         static_cast<float>(elapsed) / durationMs;
     if (fraction >= 1.0f) {
       setpointC_ = seg.targetC;
-      state_ = PROFILE_SOAKING;
-      phaseStartMs_ = nowMs;
-      pausedTotalMs_ = 0;
+      state_ = PROFILE_WAITING;
     } else {
       const float direction = seg.targetC >= segmentStartC_ ? 1.0f : -1.0f;
       setpointC_ = segmentStartC_ + direction * distance * fraction;
@@ -88,23 +89,34 @@ void ProfileEngine::update(uint32_t nowMs) {
   }
 }
 
+bool ProfileEngine::beginSoak(uint32_t nowMs) {
+  if (state_ != PROFILE_WAITING) return false;
+  phaseStartMs_ = nowMs;
+  pausedTotalMs_ = 0;
+  state_ = PROFILE_SOAKING;
+  return true;
+}
+
 void ProfileEngine::pause(uint32_t nowMs) {
-  if (state_ == PROFILE_RAMPING || state_ == PROFILE_SOAKING) {
+  if (state_ == PROFILE_RAMPING || state_ == PROFILE_WAITING ||
+      state_ == PROFILE_SOAKING) {
     pausedAtMs_ = nowMs;
+    stateBeforePause_ = state_;
     state_ = PROFILE_PAUSED;
   }
 }
 bool ProfileEngine::resume(uint32_t nowMs) {
   if (state_ != PROFILE_PAUSED) return false;
-  pausedTotalMs_ += static_cast<uint32_t>(nowMs - pausedAtMs_);
-  state_ = (fabsf(setpointC_ - segments_[segmentIndex_].targetC) < 0.001f)
-             ? PROFILE_SOAKING : PROFILE_RAMPING;
+  if (stateBeforePause_ == PROFILE_RAMPING || stateBeforePause_ == PROFILE_SOAKING)
+    pausedTotalMs_ += static_cast<uint32_t>(nowMs - pausedAtMs_);
+  state_ = stateBeforePause_;
   return true;
 }
 void ProfileEngine::stop() {
   count_ = 0;
   segmentIndex_ = 0;
   state_ = PROFILE_IDLE;
+  stateBeforePause_ = PROFILE_IDLE;
   segmentStartC_ = setpointC_ = 0.0f;
   phaseStartMs_ = pausedAtMs_ = pausedTotalMs_ = 0;
 }
