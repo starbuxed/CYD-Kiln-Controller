@@ -16,7 +16,8 @@ This firmware target is the local control processor. The CYD ESP32 is the operat
 
 - `profile_engine.*`: bounded ramp/soak profile validation, ramp interpolation, soak timing, pause/resume, and completion.
 - `zone_controller.*`: four independent hysteresis controllers with configurable deadband and minimum on/off dwell.
-- `sensor_manager.*`: per-channel thermocouple type selection, reading validation, stale-data detection, range checking, and rate plausibility checks.
+- `sensor_manager.*`: per-channel thermocouple type selection, calibration offsets, reading validation, stale-data detection, range checking, and rate plausibility checks.
+- `max31856_array.*`: four-chip SPI front end using the Adafruit MAX31856 library, with independent thermocouple type configuration and per-channel fault mapping.
 - `safety_manager.*`: latched sensor-loss, sensor-range, overtemperature, and host-link faults.
 - `kiln_control_core.*`: coordinates the profile, four zones, and fail-safe logical output states.
 - `relay_outputs.*`: validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins inactive.
@@ -26,7 +27,7 @@ The modules are deliberately separated from hardware drivers so the profile, zon
 
 ## Hardware integration still required
 
-The sensor manager currently has no physical thermocouple front-end driver attached. It accepts samples from a future MAX31856 or compatible hardware adapter. Four channel thermocouple types can be selected independently in software, but the actual SPI chip-select pins, bus wiring, board revision, and driver must be configured before readings are available.
+The MAX31856 SPI driver is implemented, but its SPI and chip-select pin macros default to -1. Set `KILN_TC_SPI_SCLK`, `KILN_TC_SPI_MISO`, `KILN_TC_SPI_MOSI`, and the required `KILN_TC1_CS_PIN` through `KILN_TC4_CS_PIN` only after checking the exact S3 board pinout. Configure each channel's thermocouple type over the UART link. No physical module has been tested yet.
 
 All relay outputs remain disabled and unassigned in `main.cpp`. No physical GPIO assignments are committed until the exact ESP32-S3 board and external relay input interface are selected. The relay input interface must be compatible with the GPIO voltage/current, polarity, and isolation requirements.
 
