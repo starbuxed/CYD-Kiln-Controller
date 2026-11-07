@@ -1,5 +1,5 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "controller": {
     "board_profile": "esp32-s3-devkitc1",
     "sensor_channel_count": 4,
@@ -15,16 +15,104 @@
     }
   },
   "sensors": [
-    { "channel": 1, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 },
-    { "channel": 2, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 },
-    { "channel": 3, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 },
-    { "channel": 4, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 }
+    {
+      "channel": 1,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "calibration_offset_c": 0
+    },
+    {
+      "channel": 2,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "calibration_offset_c": 0
+    },
+    {
+      "channel": 3,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "calibration_offset_c": 0
+    },
+    {
+      "channel": 4,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "calibration_offset_c": 0
+    }
   ],
   "zones": [
-    { "zone": 1, "enabled": false, "sensor_channels": [1], "sensor_combine": "designated", "designated_sensor": 1, "relay_outputs": [1], "setpoint_offset_c": 0.0 },
-    { "zone": 2, "enabled": false, "sensor_channels": [2], "sensor_combine": "designated", "designated_sensor": 2, "relay_outputs": [2], "setpoint_offset_c": 0.0 },
-    { "zone": 3, "enabled": false, "sensor_channels": [3], "sensor_combine": "designated", "designated_sensor": 3, "relay_outputs": [3], "setpoint_offset_c": 0.0 },
-    { "zone": 4, "enabled": false, "sensor_channels": [4], "sensor_combine": "designated", "designated_sensor": 4, "relay_outputs": [4], "setpoint_offset_c": 0.0 }
+    {
+      "zone": 1,
+      "enabled": false,
+      "sensor_channels": [
+        1
+      ],
+      "sensor_combine": "designated",
+      "designated_sensor": 1,
+      "relay_outputs": [
+        1
+      ],
+      "setpoint_offset_c": 0,
+      "control_sensor_channels": [
+        1
+      ]
+    },
+    {
+      "zone": 2,
+      "enabled": false,
+      "sensor_channels": [
+        2
+      ],
+      "sensor_combine": "designated",
+      "designated_sensor": 2,
+      "relay_outputs": [
+        2
+      ],
+      "setpoint_offset_c": 0,
+      "control_sensor_channels": [
+        2
+      ]
+    },
+    {
+      "zone": 3,
+      "enabled": false,
+      "sensor_channels": [
+        3
+      ],
+      "sensor_combine": "designated",
+      "designated_sensor": 3,
+      "relay_outputs": [
+        3
+      ],
+      "setpoint_offset_c": 0,
+      "control_sensor_channels": [
+        3
+      ]
+    },
+    {
+      "zone": 4,
+      "enabled": false,
+      "sensor_channels": [
+        4
+      ],
+      "sensor_combine": "designated",
+      "designated_sensor": 4,
+      "relay_outputs": [
+        4
+      ],
+      "setpoint_offset_c": 0,
+      "control_sensor_channels": [
+        4
+      ]
+    }
   ],
   "sensor_combine_modes": {
     "designated": "Use one selected sensor for zone control.",
@@ -41,9 +129,36 @@
     "All outputs are disabled until a complete validated hardware configuration is explicitly applied."
   ],
   "outputs": [
-    { "channel": 1, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
-    { "channel": 2, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
-    { "channel": 3, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
-    { "channel": 4, "enabled": false, "driver": "unselected", "safe_state": "inactive" }
+    {
+      "channel": 1,
+      "enabled": false,
+      "driver": "unselected",
+      "safe_state": "inactive"
+    },
+    {
+      "channel": 2,
+      "enabled": false,
+      "driver": "unselected",
+      "safe_state": "inactive"
+    },
+    {
+      "channel": 3,
+      "enabled": false,
+      "driver": "unselected",
+      "safe_state": "inactive"
+    },
+    {
+      "channel": 4,
+      "enabled": false,
+      "driver": "unselected",
+      "safe_state": "inactive"
+    }
+  ],
+  "sensor_control_rules": [
+    "sensor_channels assigns sensors to the zone for monitoring and configuration",
+    "control_sensor_channels is the subset enabled to contribute to that zone's PID/control temperature",
+    "a sensor omitted from control_sensor_channels remains configured and safety-monitored, but does not influence the zone PID calculation",
+    "all control-enabled sensors used by a group combine mode must be valid",
+    "disabling a sensor for PID must never disable independent overtemperature, open-circuit, stale-reading, or sensor-fault supervision"
   ]
 }
