@@ -18,8 +18,9 @@
 
 ## Remaining / not yet verified
 
-- CAN transport migration and integration tests.
-- Exact CAN TX/RX pins, transceivers, cable, topology, and termination.
+- ESP32 PlatformIO builds and on-device CAN integration tests.
+- Exact secondary-board CAN TX/RX pins, transceivers, cable, topology, and termination validation.
+- Main-board CAN GPIO27/22 are configured only for the default classic 2.8-inch profile; the actual board header must still be checked.
 - Independent hardwired shutdown interface implementation for both boards.
 - Physical E-stop/high-limit/contactor circuit design and verification.
 - MAX31856 SPI and CS pins pending exact S3 board.
