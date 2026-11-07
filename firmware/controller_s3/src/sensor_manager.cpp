@@ -63,11 +63,10 @@ bool SensorManager::controlEnabled(uint8_t ch) const {
          channels_[ch].mode == SENSOR_MODE_LOG_CONTROL;
 }
 bool SensorManager::safetyEnabled(uint8_t ch) const {
-  return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
-         (channels_[ch].mode == SENSOR_MODE_LOG_CONTROL ||
-          channels_[ch].mode == SENSOR_MODE_LOG_SAFETY);
-}
-uint8_t SensorManager::monitoringMask() const {
+  // Safety is a kiln-wide OR across every enabled sensor. Operating mode
+  // controls PID eligibility, not whether an active sensor is safety-checked.
+  return monitoringEnabled(ch);
+}uint8_t SensorManager::monitoringMask() const {
   uint8_t mask = 0;
   for (uint8_t i = 0; i < TEMPERATURE_CHANNELS; ++i)
     if (monitoringEnabled(i)) mask |= static_cast<uint8_t>(1u << i);
