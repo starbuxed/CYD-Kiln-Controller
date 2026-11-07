@@ -1,34 +1,42 @@
 # Dedicated ESP32-S3 Kiln Controller
 
-This firmware target is the local control processor. The CYD ESP32 remains the touchscreen and web-server device; the Pro Micro is a legacy prototype.
+This firmware target is the local control processor. The CYD ESP32 is the operator interface and will host the local web application. The Pro Micro is retained only as a legacy prototype.
 
 ## Target functions
 
-- Four temperature inputs, individually configurable for supported thermocouple types.
-- Four independent zone-control loops.
+- Four temperature inputs, individually configurable for K/J/N/R/S/T/E/B thermocouples.
+- Four independent heating zones with independent hysteresis control.
 - Four independent digital ON/OFF control outputs.
 - Per-output active-high/active-low configuration.
-- Safe inactive outputs during boot, reset, brownout, watchdog timeout, and latched faults.
+- Local ramp/soak profile execution.
+- Local latched safety supervision independent of the CYD.
 - Framed UART link to the CYD operator interface.
 
-## Implemented controller foundation
+## Implemented controller modules
 
-- Four-channel relay output abstraction with per-channel polarity and validation.
-- UART protocol server using the shared framing and CRC implementation.
-- Periodic controller heartbeat and status telemetry.
-- Typed command handling with acknowledgements and stale-sequence rejection.
-- STOP always commands all configured outputs inactive.
-- START and RESUME remain rejected until sensors, profiles, and safety interlocks are implemented.
+- `profile_engine.*`: bounded ramp/soak profile validation, ramp interpolation, soak timing, pause/resume, and completion.
+- `zone_controller.*`: four independent hysteresis controllers with configurable deadband and minimum on/off dwell.
+- `sensor_manager.*`: per-channel thermocouple type selection, reading validation, stale-data detection, range checking, and rate plausibility checks.
+- `safety_manager.*`: latched sensor-loss, sensor-range, overtemperature, and host-link faults.
+- `kiln_control_core.*`: coordinates the profile, four zones, and fail-safe logical output states.
+- `relay_outputs.*`: validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins inactive.
+- `controller_link.*`: UART heartbeat, status telemetry, command validation, acknowledgements, and host-link timeout handling.
 
-## Output scope
+The modules are deliberately separated from hardware drivers so the profile, zone, sensor-validation, and safety logic can be host-tested without the ESP32 boards.
 
-The firmware issues four logical relay-control commands. The user selects and supplies the external relay/SSR equipment. The controller's physical output interface must be matched to the external module's control-input voltage, current, polarity, and isolation requirements.
+## Hardware integration still required
 
-Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. Use appropriate protected/isolated interface circuitry. A commanded OFF state does not prove the external relay or heater power is physically off.
+The sensor manager currently has no physical thermocouple front-end driver attached. It accepts samples from a future MAX31856 or compatible hardware adapter. Four channel thermocouple types can be selected independently in software, but the actual SPI chip-select pins, bus wiring, board revision, and driver must be configured before readings are available.
 
-The four-channel output driver is implemented in src/relay_outputs.cpp. It validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins to their logical inactive level. All channels are currently disabled and unassigned in main.cpp; no relay can be energized by the current application.
+All relay outputs remain disabled and unassigned in `main.cpp`. No physical GPIO assignments are committed until the exact ESP32-S3 board and external relay input interface are selected. The relay input interface must be compatible with the GPIO voltage/current, polarity, and isolation requirements.
 
-No GPIO pin assignments are committed until the exact ESP32-S3 board and output-interface hardware are selected. External biasing must keep all output interfaces inactive while the MCU is reset, unpowered, or booting.
+Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. A commanded OFF state does not prove the external relay or heater power is physically off. Use an independent hardware overtemperature limit and appropriate power-stage protection.
+
+## Safety boundary
+
+START and RESUME are intentionally rejected by the UART command handler. The current application cannot start a firing or energize the disabled output channels. These commands must remain blocked until sensor acquisition, profile transfer, physical output mapping, and end-to-end safety validation are complete.
+
+No automatic restart or resume is allowed after reset, brownout, sensor loss, communication failure, or a latched fault.
 
 ## Build
 
@@ -38,4 +46,10 @@ From this directory:
 pio run -e controller_s3_devkitc1
 ```
 
-The current application remains non-firing. Temperature acquisition, zone control, profile execution, fault manager, and complete safety supervision are not yet implemented.
+Run portable host tests from the repository root:
+
+```sh
+sh tests/run_native_tests.sh
+```
+
+Neither the ESP32 board build nor physical hardware has been tested yet.
