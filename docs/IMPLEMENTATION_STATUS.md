@@ -19,13 +19,15 @@
 - Local latched safety manager for sensor loss, sensor range, overtemperature, and host-link faults.
 - Four-zone control core coordinating profile execution, waiting for all four measured zones to reach target before starting soak timers, independent zone control, and fail-safe output masks.
 - S3 status telemetry reports sensor-valid bits and latched control-core fault flags.
+- Typed UART configuration messages stage/commit ramp-soak profiles and configure all four zones, per-channel thermocouple type/calibration, and maximum safety temperature.
+- START/PAUSE/RESUME/STOP/ACK_FAULT commands are wired to the local control core; START and RESUME return NOT_READY unless all readiness checks pass.
 - Portable host test sources and a reproducible native C++ test script; GitHub Actions runs the portable tests on pushes and pull requests.
 - CYD build source filter excludes the obsolete Pro Micro transport from the current S3 architecture.
 
 ## Not yet implemented or verified
 
 - Physical thermocouple acquisition driver. The sensor manager is ready to receive readings, but no MAX31856/MAX31865 or other hardware driver is connected.
-- Profile storage and profile transfer/configuration from the CYD.
+- Profile persistence in nonvolatile storage and the CYD-side profile editor/transfer workflow.
 - Verified physical GPIO assignments for the exact S3 board and external relay input interface.
 - CYD display/touchscreen UI, Wi-Fi setup, HTTP API, browser authentication, and live web updates.
 - Firing history, charts, data export, hardware watchdog integration, and complete end-to-end firing state machine.
