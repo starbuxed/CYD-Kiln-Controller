@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "controller": {
     "board_profile": "esp32-s3-devkitc1",
     "sensor_channel_count": 4,
@@ -21,7 +21,8 @@
       "sensor_family": "thermocouple",
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
-      "calibration_offset_c": 0
+      "calibration_offset_c": 0,
+      "mode": "log_safety"
     },
     {
       "channel": 2,
@@ -29,7 +30,8 @@
       "sensor_family": "thermocouple",
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
-      "calibration_offset_c": 0
+      "calibration_offset_c": 0,
+      "mode": "log_safety"
     },
     {
       "channel": 3,
@@ -37,7 +39,8 @@
       "sensor_family": "thermocouple",
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
-      "calibration_offset_c": 0
+      "calibration_offset_c": 0,
+      "mode": "log_safety"
     },
     {
       "channel": 4,
@@ -45,7 +48,8 @@
       "sensor_family": "thermocouple",
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
-      "calibration_offset_c": 0
+      "calibration_offset_c": 0,
+      "mode": "log_safety"
     }
   ],
   "zones": [
@@ -155,10 +159,20 @@
     }
   ],
   "sensor_control_rules": [
-    "sensor_channels assigns sensors to the zone for monitoring and configuration",
-    "control_sensor_channels is the subset enabled to contribute to that zone's PID/control temperature",
-    "a sensor omitted from control_sensor_channels remains configured and safety-monitored, but does not influence the zone PID calculation",
-    "all control-enabled sensors used by a group combine mode must be valid",
-    "disabling a sensor for PID must never disable independent overtemperature, open-circuit, stale-reading, or sensor-fault supervision"
-  ]
+    "Sensor operating mode is configured per physical sensor, independently of zone assignment.",
+    "off disables acquisition, logging, PID use, and safety supervision for that sensor.",
+    "log_only acquires and logs readings and faults but does not affect PID or trip kiln safety.",
+    "log_control acquires and logs readings and may be selected for PID in one or more zones, but does not trip kiln safety.",
+    "log_safety acquires and logs readings and independently trips kiln safety for configured sensor faults and overtemperature, but is never used for PID.",
+    "Only sensors in log_control mode may be selected in a zone's control_sensor_channels.",
+    "A sensor in log_safety mode remains safety-supervised even when it is not selected for PID.",
+    "A sensor in log_only mode is not safety-supervised; select log_safety when an independent safety trip is required.",
+    "Only off disables monitoring; every other mode continues acquisition and logging."
+  ],
+  "sensor_modes": {
+    "off": "No acquisition, logging, PID control, or safety supervision.",
+    "log_only": "Acquire and log readings and sensor faults. Do not affect PID or trip kiln safety.",
+    "log_control": "Acquire and log readings; allow this sensor to contribute to PID only where assigned. Do not trip kiln safety.",
+    "log_safety": "Acquire and log readings and independently supervise sensor faults and overtemperature. Do not contribute to PID."
+  }
 }
