@@ -15,7 +15,8 @@
 - Four-channel relay output abstraction with active-high/active-low polarity, disabled/unassigned handling, and inactive startup.
 - Hardware-independent ramp/soak profile engine with bounded profile validation, ramp interpolation, measured-temperature arrival wait before soak timing, pause/resume, and completion.
 - Four independent hysteresis zone controllers with configurable deadband and minimum on/off dwell.
-- Four-channel sensor manager with per-channel thermocouple type selection (K/J/N/R/S/T/E/B), range checks, sample freshness, driver-fault handling, and implausible-rate detection.
+- Four-channel sensor manager with per-channel thermocouple type selection (K/J/N/R/S/T/E/B), range checks, sample freshness, driver-fault handling, implausible-rate detection, and four explicit operating modes: Off, Log only, Log and control, and Log and safety.
+- Per-sensor mode masks distinguish acquisition/monitoring, PID eligibility, and safety supervision. Newly configured sensors default to Log and safety; changing modes invalidates the old sample until a fresh reading arrives.
 - Local latched safety manager for sensor loss, sensor range, overtemperature, and host-link faults.
 - Four-zone control core coordinating profile execution, waiting for all four measured zones to reach target before starting soak timers, independent zone control, and fail-safe output masks.
 - S3 status telemetry reports sensor-valid bits and latched control-core fault flags.
@@ -27,6 +28,8 @@
 ## Not yet implemented or verified
 
 - MAX31856 SPI driver source is implemented with per-channel K/J/N/R/S/T/E/B selection and open/range fault mapping, but the S3 SPI and chip-select pins remain unset and no physical sensor modules have been tested.
+- Per-sensor operating-mode configuration is not yet wired into the UART configuration protocol or CYD UI; the sensor manager API and example schema are in place.
+- The safety manager and zone control core are not yet consuming the new per-sensor safety/control masks. Until that integration is complete, do not assume the four modes are fully enforced during firing.
 - Profile persistence in nonvolatile storage and the CYD-side profile editor/transfer workflow.
 - Verified physical GPIO assignments for the exact S3 board and external relay input interface.
 - CYD display/touchscreen UI, Wi-Fi setup, HTTP API, browser authentication, and live web updates.
@@ -39,7 +42,7 @@
 - All relay output pins remain disabled and unassigned in the current build.
 - Outputs are initialized inactive and commanded inactive on STOP, PAUSE, and latched faults.
 - Loss of the CYD heartbeat during a firing forces all outputs inactive and latches a host-link fault.
-- Fault acknowledgement requires all four sensor channels valid, readings below the configured safety limit, and a healthy host link.
+- Current fault acknowledgement still requires all four sensor channels valid, readings below the configured safety limit, and a healthy host link; it must be updated to use the configured safety-mode sensor mask.
 - No automatic restart or resume after reset, brownout, sensor loss, or communication failure.
 
 ## Validation status
