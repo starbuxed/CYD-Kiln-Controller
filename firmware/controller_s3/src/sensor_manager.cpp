@@ -8,6 +8,7 @@ SensorManager::SensorManager() {
     channels_[i].type = TC_K;
     channels_[i].reading = {0.0f, 0, SENSOR_NOT_CONFIGURED, false};
     channels_[i].configured = false;
+    channels_[i].calibrationOffsetC = 0.0f;
     channels_[i].hasPrevious = false;
     channels_[i].previousC = 0.0f;
     channels_[i].previousAtMs = 0;
@@ -26,10 +27,12 @@ float SensorManager::maximumFor(ThermocoupleType t) const {
     default: return 0.0f;
   }
 }
-bool SensorManager::configure(uint8_t ch, ThermocoupleType t) {
-  if (ch >= TEMPERATURE_CHANNELS || t > TC_B) return false;
+bool SensorManager::configure(uint8_t ch, ThermocoupleType t, float offsetC) {
+  if (ch >= TEMPERATURE_CHANNELS || t > TC_B || !isfinite(offsetC) ||
+      fabsf(offsetC) > 50.0f) return false;
   channels_[ch].type = t;
   channels_[ch].configured = true;
+  channels_[ch].calibrationOffsetC = offsetC;
   channels_[ch].hasPrevious = false;
   channels_[ch].reading.valid = false;
   channels_[ch].reading.fault = SENSOR_NOT_CONFIGURED;
@@ -40,10 +43,11 @@ bool SensorManager::submitSample(uint8_t ch, float temp,
   if (ch >= TEMPERATURE_CHANNELS || !channels_[ch].configured) return false;
   Channel& c = channels_[ch];
   c.reading.sampledAtMs = nowMs;
-  c.reading.temperatureC = temp;
+  c.reading.temperatureC = temp + c.calibrationOffsetC;
   c.reading.fault = driverFault;
   c.reading.valid = false;
   if (driverFault != SENSOR_OK) return true;
+  temp = c.reading.temperatureC;
   if (!isfinite(temp) || temp < -270.0f || temp > maximumFor(c.type)) {
     c.reading.fault = SENSOR_OUT_OF_RANGE;
     return true;
@@ -75,6 +79,9 @@ void SensorManager::update(uint32_t nowMs) {
       c.reading.fault = SENSOR_STALE;
     }
   }
+}
+bool SensorManager::configured(uint8_t ch) const {
+  return ch < TEMPERATURE_CHANNELS && channels_[ch].configured;
 }
 bool SensorManager::valid(uint8_t ch) const {
   return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
