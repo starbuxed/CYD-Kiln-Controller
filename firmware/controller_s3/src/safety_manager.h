@@ -12,11 +12,12 @@ enum SafetyFault : uint16_t {
 class SafetyManager {
  public:
   SafetyManager();
-  void update(uint32_t nowMs, uint8_t sensorValidMask,
-              const float temperaturesC[4], bool hostLinkHealthy,
-              bool firing, float maximumAllowedC);
-  bool acknowledge(uint8_t sensorValidMask, bool hostLinkHealthy,
-                   const float temperaturesC[4], float maximumAllowedC);
+  void update(uint32_t nowMs, uint8_t safetySensorMask,
+              uint8_t sensorValidMask, const float temperaturesC[4],
+              bool hostLinkHealthy, bool firing, float maximumAllowedC);
+  bool acknowledge(uint8_t safetySensorMask, uint8_t sensorValidMask,
+                   bool hostLinkHealthy, const float temperaturesC[4],
+                   float maximumAllowedC);
   void latch(uint16_t fault);
   uint16_t faults() const { return faults_; }
   bool faulted() const { return faults_ != FAULT_NONE; }
