@@ -9,6 +9,8 @@
 #define KILN_BOARD_CYD_35_ST7796_XPT2046 4
 #define KILN_BOARD_CYD_43_S3_RGB_GT911 5
 #define KILN_BOARD_CYD_70_S3_RGB_GT911 6
+#define KILN_BOARD_CYD_24_FAMILY 7
+#define KILN_BOARD_CYD_32_ST7789 8
 #define KILN_BOARD_CUSTOM 99
 
 #ifndef KILN_BOARD_PROFILE
@@ -73,6 +75,18 @@ static constexpr BoardProfile KILN_BOARD = {
   6, "CYD 7.0 ESP32-S3 RGB + GT911", "ESP32-8048S070",
   EspTarget::ESP32_S3, 800, 480, DisplayBus::RGB_PARALLEL,
   DisplayDriver::ST7262, TouchDriver::GT911, false
+};
+#elif KILN_BOARD_PROFILE == KILN_BOARD_CYD_24_FAMILY
+static constexpr BoardProfile KILN_BOARD = {
+  7, "CYD 2.4-inch family (controller/touch revision varies)", "ESP32-2432S024",
+  EspTarget::ESP32, 240, 320, DisplayBus::SPI,
+  DisplayDriver::UNKNOWN, TouchDriver::UNKNOWN, false
+};
+#elif KILN_BOARD_PROFILE == KILN_BOARD_CYD_32_ST7789
+static constexpr BoardProfile KILN_BOARD = {
+  8, "CYD 3.2-inch ST7789 family", "ESP32-2432S032",
+  EspTarget::ESP32, 240, 320, DisplayBus::SPI,
+  DisplayDriver::ST7789, TouchDriver::UNKNOWN, false
 };
 #elif KILN_BOARD_PROFILE == KILN_BOARD_CUSTOM
 static constexpr BoardProfile KILN_BOARD = {
