@@ -20,6 +20,12 @@ bool KilnControlCore::configureProfile(const RampSoakSegment* segments,
   // bounded copy here so configuration is independent of caller memory.
   for (uint8_t i = 0; i < count; ++i) {
     if (segments[i].targetC >= maximumAllowedC_) return false;
+    for (uint8_t z = 0; z < CONTROL_ZONE_COUNT; ++z) {
+      if (zoneConfigured_[z]) {
+        const float zoneTarget = segments[i].targetC + zoneConfig_[z].setpointOffsetC;
+        if (zoneTarget < 0.0f || zoneTarget >= maximumAllowedC_) return false;
+      }
+    }
   }
   configuredCount_ = count;
   for (uint8_t i = 0; i < count; ++i) configuredSegments_[i] = segments[i];
@@ -31,6 +37,12 @@ bool KilnControlCore::configureZone(uint8_t zone,
   if (zone >= CONTROL_ZONE_COUNT || running_ || paused_ ||
       !isfinite(config.setpointOffsetC) || fabsf(config.setpointOffsetC) > 200.0f)
     return false;
+  if (profileConfigured_) {
+    for (uint8_t i = 0; i < configuredCount_; ++i) {
+      const float zoneTarget = configuredSegments_[i].targetC + config.setpointOffsetC;
+      if (zoneTarget < 0.0f || zoneTarget >= maximumAllowedC_) return false;
+    }
+  }
   if (!zones_[zone].configure(config.control)) return false;
   zoneConfig_[zone] = config;
   zoneConfigured_[zone] = true;
@@ -46,7 +58,8 @@ bool KilnControlCore::start(uint32_t nowMs, const float temps[4],
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i)
     if (!zoneConfigured_[i]) return false;
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i)
-    if (!isfinite(temps[i]) || temps[i] < -50.0f || temps[i] > 2000.0f) return false;
+    if (!isfinite(temps[i]) || temps[i] < -50.0f ||
+        temps[i] >= maximumAllowedC_) return false;
   if (!profile_.start(configuredSegments_, configuredCount_, temps[0], nowMs))
     return false;
   running_ = true;
