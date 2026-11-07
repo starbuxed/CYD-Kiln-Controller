@@ -7,8 +7,9 @@
 #include "master_power_permit.h"
 
 // Dedicated ESP32-S3: thermocouple acquisition, local control, outputs,
-// and local safety. All physical pin assignments remain disabled until the
-// exact board and interface hardware are confirmed.
+// and local safety. CAN and master-permit reference pins are configured for
+// the DevKitC-1 profile; sensor and four heater-output pins remain disabled
+// until the exact interface hardware is confirmed.
 
 static constexpr uint8_t SENSOR_CHANNEL_COUNT = 4;
 static constexpr uint8_t HEATER_ZONE_COUNT = 4;
