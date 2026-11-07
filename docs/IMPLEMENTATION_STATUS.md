@@ -16,6 +16,8 @@ The repository contains an initial CYD board-profile catalogue and a legacy Pro 
 
 - Updated architecture, hardware, decision, safety, roadmap, protocol, and README documentation for CYD + dedicated ESP32-S3.
 - Added a PlatformIO target and non-firing startup scaffold in `firmware/controller_s3/`.
+- Added a configurable four-channel relay-output driver with active-high/active-low polarity, duplicate-pin validation, disabled/unassigned channel handling, and inactive-state initialization.
+- Added host-side tests for disabled configurations, unique pins, missing enabled pins, and duplicate GPIO assignments.
 - Added a four-zone configuration example in `shared/schemas/four-zone-config.example.json`.
 - Retained the Pro Micro firmware as a legacy prototype.
 
@@ -31,14 +33,13 @@ The repository contains an initial CYD board-profile catalogue and a legacy Pro 
 
 - Sensor front-end drivers and four-channel temperature acquisition.
 - Four independent zone-control loops.
-- Four GPIO output channels and polarity configuration.
-- Output interface hardware and optional feedback.
+- Physical GPIO assignments and validated relay-module interface.
 - CYD-to-S3 communications implementation.
 - Dedicated controller watchdog/fault manager.
 - CYD display/touch integration, web server, authentication, profiles, and firing history.
 
 ## Validation status
 
-The ESP32-S3 firmware is currently only a non-firing startup scaffold. No sensor pins or output pins are assigned, and there is no code path to switch relay modules yet.
+The S3 relay driver is implemented as a configurable software module, but all four channels remain disabled and have no GPIO assignments in the current startup configuration. There is no path to energize a relay in the current application.
 
-The earlier standalone protocol test was compiled with g++ using C++11 and passed round-trip, CRC-corruption, and oversized-payload checks. No PlatformIO build or physical hardware test has been run for the new ESP32-S3 target.
+The host-side relay configuration test is intended to be compiled with a standard C++ compiler. No PlatformIO build or physical hardware test has yet been run for the new ESP32-S3 target.
