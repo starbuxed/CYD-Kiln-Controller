@@ -52,8 +52,8 @@ The browser and CYD must never send raw GPIO values. The S3 validates typed requ
 | Offset | Size | Meaning |
 |---:|---:|---|
 | 0 | 1 | Controller state |
-| 1 | 2 | Fault flags (currently zero; fault manager pending) |
-| 3 | 1 | Sensor-valid bitmask (currently zero; sensor drivers pending) |
+| 1 | 2 | Latched safety fault flags |
+| 3 | 1 | Sensor-valid bitmask |
 | 4 | 1 | Commanded output bitmask |
 | 5 | 8 | Four signed temperatures, deci-degrees C |
 | 13 | 8 | Four signed setpoints, deci-degrees C |
@@ -64,10 +64,10 @@ A zero sensor-valid mask means no valid temperature channels are currently avail
 
 Both processors send heartbeats every 500 ms. The S3 monitors the host heartbeat. If a previously established host heartbeat becomes stale while the controller is FIRING, the S3 commands all outputs inactive and enters FAULT. The S3 must continue local safety supervision independently of the CYD.
 
-The current S3 firmware deliberately blocks START and RESUME because sensor acquisition, profile validation, and full safety interlocks are not implemented. Reconnection never automatically replays a command.
+The S3 contains a hardware-independent profile engine, four zone controllers, a sensor-validation abstraction, and a local safety manager. START and RESUME remain blocked at the UART command boundary until a real sensor front-end, profile transfer, enabled output map, and complete end-to-end hardware validation are integrated. Reconnection never automatically replays a command.
 
 ## Current implementation boundary
 
 Implemented: shared frame encoding/parsing, CRC, sequence comparison, CYD UART client, S3 UART server, heartbeat exchange, status snapshots, command acknowledgements, stale command rejection, and safe STOP/PAUSE handling.
 
-Not yet implemented: profile transfer, sensor configuration, real temperature telemetry, firing state machine, fault manager, zone control loops, and enabled physical GPIO mapping.
+Not yet implemented: MAX31856 (or other) hardware driver, sensor configuration/profile transfer over UART, enabled physical GPIO mapping, CYD UI, and end-to-end firing validation.
