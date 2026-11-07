@@ -1,14 +1,20 @@
 #include <Arduino.h>
 #include "board_config.h"
 #include "controller_link.h"
-#include "shutdown_output.h"
+#include "master_power_permit.h"
 
 #if KILN_CAN_PINMAP_AVAILABLE
 static kiln::CanStream controllerBus(kiln::CAN_ROLE_MAIN);
 static ControllerLink controllerLink;
 #endif
 
-static ShutdownRequestOutput mainShutdownRequest;
+#ifndef KILN_MAIN_POWER_PERMIT_PIN
+#define KILN_MAIN_POWER_PERMIT_PIN -1
+#endif
+#ifndef KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH
+#define KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH 1
+#endif
+static MasterPowerPermit mainPowerPermit;
 
 static void printBoardProfile() {
   Serial.println();
@@ -36,7 +42,7 @@ static void printBoardProfile() {
 // Call this from a touchscreen emergency control or a local emergency input.
 // The hardwired request is asserted first; CAN is supplementary.
 void requestEmergencyShutdown() {
-  mainShutdownRequest.assertShutdown();
+  mainPowerPermit.drop();
 #if KILN_CAN_PINMAP_AVAILABLE
   controllerLink.sendCommand(kiln::CMD_ESTOP);
 #endif
@@ -45,7 +51,8 @@ void requestEmergencyShutdown() {
 void setup() {
   Serial.begin(115200);
   delay(250);
-  mainShutdownRequest.begin(KILN_MAIN_SHUTDOWN_REQUEST_PIN);
+  mainPowerPermit.begin(KILN_MAIN_POWER_PERMIT_PIN,
+                        KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH != 0);
   printBoardProfile();
 
 #if KILN_CAN_PINMAP_AVAILABLE
@@ -70,5 +77,14 @@ void loop() {
                   controllerLink.controllerState(), controllerLink.faultFlags());
   }
 #endif
+#if KILN_CAN_PINMAP_AVAILABLE
+  const bool mainPermit = controllerLink.connected() &&
+      controllerLink.hasStatus() &&
+      controllerLink.controllerState() == kiln::STATE_FIRING &&
+      controllerLink.faultFlags() == 0;
+#else
+  const bool mainPermit = false;
+#endif
+  mainPowerPermit.setPermit(mainPermit);
   delay(2);
 }
