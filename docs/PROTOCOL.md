@@ -6,7 +6,7 @@ The CYD is the operator interface. The dedicated ESP32-S3 is authoritative for s
 
 The initial transport is framed hardware UART at 115200 baud, 8-N-1, using 3.3 V logic. Exact pins, cable routing, grounding, and any required isolation must be verified against the actual board revisions. For a noisy kiln environment or long cable, evaluate isolated RS-485.
 
-The CYD UART pin map is only enabled for supported classic 2.8-inch CYD profiles. S3 UART pins remain compile-time configurable and unset until the exact board is selected.
+The default classic 2.8-inch CYD profile uses GPIO27 TX / GPIO22 RX. The ESP32-S3-DevKitC-1 PlatformIO target uses GPIO17 RX / GPIO18 TX. Override the S3 pin macros for a different board or wiring harness.
 
 ## Frame format
 
