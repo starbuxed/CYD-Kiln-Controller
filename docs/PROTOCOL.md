@@ -37,7 +37,7 @@ The shared implementation is shared/protocol/kiln_protocol.h. Frames with invali
 | PROFILE_COMMIT | 0x22 | CYD → S3 | Empty; validates and installs staged profile |
 | ZONE_CONFIG | 0x23 | CYD → S3 | Zone + hysteresis deci-C + min-on ms + min-off ms + setpoint offset deci-C |
 | SENSOR_CONFIG | 0x24 | CYD → S3 | Channel + thermocouple type + calibration offset deci-C |
-| SENSOR_MODE_CONFIG | 0x26 | CYD → S3 | Channel + operating mode (0=Off, 1=Log only, 2=Log and control (including safety), 3=Log and safety) |
+| SENSOR_MODE_CONFIG | 0x26 | CYD → S3 | Channel + operating mode (0=Off, 1=Log only (including safety), 2=Log and control, 3=Log and safety) |
 | SAFETY_CONFIG | 0x25 | CYD → S3 | Maximum allowed temperature deci-C u16/i16 |
 
 All multibyte integers are little-endian. Thermocouple type IDs are K=0, J=1, N=2, R=3, S=4, T=5, E=6, B=7.
