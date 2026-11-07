@@ -85,5 +85,18 @@ int main() {
   assert(soakCore.profileState() == PROFILE_COMPLETE);
   assert(!soakCore.running());
   assert(soakCore.outputMask() == 0);
+
+  KilnControlCore pausedCore;
+  assert(pausedCore.configureProfile(profile, 2));
+  for (uint8_t i = 0; i < 4; ++i) {
+    ZoneRuntimeConfig cfg = {{5.0f, 1000UL, 1000UL}, 0.0f};
+    assert(pausedCore.configureZone(i, cfg));
+  }
+  assert(pausedCore.start(0, temps, 0x0F, true));
+  assert(pausedCore.pause(100));
+  float overheated[4] = {1400, 1400, 1400, 1400};
+  pausedCore.update(200, overheated, 0x0F, true);
+  assert(pausedCore.faulted());
+  assert(pausedCore.outputMask() == 0);
   return 0;
 }
