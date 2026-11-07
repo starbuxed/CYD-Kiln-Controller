@@ -22,12 +22,16 @@ class ControllerLink {
   bool configureSensor(uint8_t channel, uint8_t thermocoupleType,
                        int16_t calibrationOffsetDeciC);
   bool configureSafetyLimit(int16_t maximumDeciC);
+  bool configureSensorMode(uint8_t channel, uint8_t mode);
 
   bool hasStatus() const { return hasStatus_; }
   uint8_t controllerState() const { return controllerState_; }
   uint16_t faultFlags() const { return faultFlags_; }
   uint8_t sensorValidMask() const { return sensorValidMask_; }
   uint8_t outputCommandMask() const { return outputCommandMask_; }
+  uint8_t sensorMode(uint8_t channel) const {
+    return channel < 4 ? sensorModes_[channel] : 0xFF;
+  }
   uint8_t sensorFault(uint8_t channel) const {
     return channel < 4 ? sensorFaults_[channel] : 0xFF;
   }
@@ -54,6 +58,7 @@ class ControllerLink {
   int16_t temperatures_[4] = {};
   int16_t setpoints_[4] = {};
   uint8_t sensorFaults_[4] = {};
+  uint8_t sensorModes_[4] = {};
   uint8_t lastAckCommand_ = 0;
   uint8_t lastAckResult_ = kiln::RESULT_UNSUPPORTED;
 };
