@@ -2,11 +2,12 @@
 
 #include <Arduino.h>
 #include "kiln_protocol.h"
+#include "can_stream.h"
 
 class ControllerLink {
  public:
-  void begin(HardwareSerial& serial, int8_t rxPin, int8_t txPin,
-             uint32_t baud = 115200);
+  bool begin(kiln::CanStream& stream, int8_t txPin, int8_t rxPin,
+             uint32_t bitrate = 500000);
   void update();
   bool connected() const;
   uint32_t heartbeatAgeMs() const;
@@ -44,7 +45,7 @@ class ControllerLink {
   void handleFrame(const kiln::Frame& frame);
   void sendFrame(uint8_t type, const uint8_t* payload, uint8_t length);
 
-  HardwareSerial* serial_ = nullptr;
+  kiln::CanStream* stream_ = nullptr;
   kiln::Parser parser_;
   uint16_t txSequence_ = 0;
   uint32_t lastHeartbeatTxMs_ = 0;
