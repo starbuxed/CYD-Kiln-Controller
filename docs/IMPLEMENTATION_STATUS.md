@@ -31,4 +31,4 @@ A valid serial heartbeat only indicates that the Pro Micro is responding. It doe
 
 ## Validation status
 
-No PlatformIO build or physical hardware test has been run as part of this increment. The protocol test source is present but has not yet been executed against the repository toolchain. Build both MCU targets and run protocol tests before connecting hardware.
+The standalone protocol test source was compiled with g++ using C++11 and passed the frame round-trip, CRC-corruption rejection, and oversized-payload checks. PlatformIO is not installed in the current environment, so neither MCU firmware target has been built here. No physical hardware test has been run. Build both MCU targets and test the exact board revisions before connecting hardware.
