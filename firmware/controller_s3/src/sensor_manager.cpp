@@ -64,7 +64,8 @@ bool SensorManager::controlEnabled(uint8_t ch) const {
 }
 bool SensorManager::safetyEnabled(uint8_t ch) const {
   return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
-         channels_[ch].mode == SENSOR_MODE_LOG_SAFETY;
+         (channels_[ch].mode == SENSOR_MODE_LOG_CONTROL ||
+          channels_[ch].mode == SENSOR_MODE_LOG_SAFETY);
 }
 uint8_t SensorManager::monitoringMask() const {
   uint8_t mask = 0;
