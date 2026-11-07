@@ -23,6 +23,7 @@ class KilnControlCore {
   bool resume(uint32_t nowMs, const float temperaturesC[4],
               uint8_t sensorValidMask, bool hostLinkHealthy);
   void stop();
+  void latchFault(uint16_t fault);
   bool acknowledgeFault(const float temperaturesC[4],
                        uint8_t sensorValidMask, bool hostLinkHealthy);
   uint16_t faults() const { return safety_.faults(); }
