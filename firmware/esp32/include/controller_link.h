@@ -26,6 +26,10 @@ class ControllerLink {
   bool configureSensorMode(uint8_t channel, uint8_t mode);
 
   bool hasStatus() const { return hasStatus_; }
+  bool statusFresh(uint32_t maximumAgeMs = 1500) const {
+    return hasStatus_ &&
+           static_cast<uint32_t>(millis() - lastStatusRxMs_) <= maximumAgeMs;
+  }
   uint8_t controllerState() const { return controllerState_; }
   uint16_t faultFlags() const { return faultFlags_; }
   uint8_t sensorValidMask() const { return sensorValidMask_; }
@@ -50,6 +54,7 @@ class ControllerLink {
   uint16_t txSequence_ = 0;
   uint32_t lastHeartbeatTxMs_ = 0;
   uint32_t lastHeartbeatRxMs_ = 0;
+  uint32_t lastStatusRxMs_ = 0;
   bool heartbeatSeen_ = false;
   bool hasStatus_ = false;
   uint8_t controllerState_ = kiln::STATE_BOOT;
