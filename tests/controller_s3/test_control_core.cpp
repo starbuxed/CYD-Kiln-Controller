@@ -64,6 +64,9 @@ int main() {
   assert(core.outputMask() == 0);
 
   KilnControlCore soakCore;
+  assert(soakCore.setMaximumAllowedTemperatureC(1300.0f));
+  assert(soakCore.setSoakToleranceC(3.0f));
+  assert(!soakCore.setSoakToleranceC(0.1f));
   RampSoakSegment soakProfile[] = {{100.0f, 100.0f, 600}};
   assert(soakCore.configureProfile(soakProfile, 1));
   for (uint8_t i = 0; i < 4; ++i) {
