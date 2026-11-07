@@ -1,8 +1,10 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "controller": {
     "board_profile": "esp32-s3-devkitc1",
-    "zone_count": 4,
+    "sensor_channel_count": 4,
+    "logical_zone_count": 4,
+    "relay_output_count": 4,
     "power_supply": {
       "status": "unknown",
       "voltage_v": null,
@@ -13,48 +15,30 @@
     }
   },
   "sensors": [
-    {
-      "channel": 1,
-      "enabled": false,
-      "sensor_family": "thermocouple",
-      "thermocouple_type": null,
-      "front_end": "max31856_candidate",
-      "zone": 1,
-      "calibration_offset_c": 0.0
-    },
-    {
-      "channel": 2,
-      "enabled": false,
-      "sensor_family": "thermocouple",
-      "thermocouple_type": null,
-      "front_end": "max31856_candidate",
-      "zone": 2,
-      "calibration_offset_c": 0.0
-    },
-    {
-      "channel": 3,
-      "enabled": false,
-      "sensor_family": "thermocouple",
-      "thermocouple_type": null,
-      "front_end": "max31856_candidate",
-      "zone": 3,
-      "calibration_offset_c": 0.0
-    },
-    {
-      "channel": 4,
-      "enabled": false,
-      "sensor_family": "thermocouple",
-      "thermocouple_type": null,
-      "front_end": "max31856_candidate",
-      "zone": 4,
-      "calibration_offset_c": 0.0
-    }
+    { "channel": 1, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 },
+    { "channel": 2, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 },
+    { "channel": 3, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 },
+    { "channel": 4, "enabled": false, "sensor_family": "thermocouple", "thermocouple_type": null, "front_end": "max31856_candidate", "calibration_offset_c": 0.0 }
   ],
   "zones": [
-    { "zone": 1, "sensor_channel": 1, "heater_output": 1, "enabled": false },
-    { "zone": 2, "sensor_channel": 2, "heater_output": 2, "enabled": false },
-    { "zone": 3, "sensor_channel": 3, "heater_output": 3, "enabled": false },
-    { "zone": 4, "sensor_channel": 4, "heater_output": 4, "enabled": false }
+    { "zone": 1, "enabled": false, "sensor_channels": [1], "sensor_combine": "designated", "designated_sensor": 1, "relay_outputs": [1], "setpoint_offset_c": 0.0 },
+    { "zone": 2, "enabled": false, "sensor_channels": [2], "sensor_combine": "designated", "designated_sensor": 2, "relay_outputs": [2], "setpoint_offset_c": 0.0 },
+    { "zone": 3, "enabled": false, "sensor_channels": [3], "sensor_combine": "designated", "designated_sensor": 3, "relay_outputs": [3], "setpoint_offset_c": 0.0 },
+    { "zone": 4, "enabled": false, "sensor_channels": [4], "sensor_combine": "designated", "designated_sensor": 4, "relay_outputs": [4], "setpoint_offset_c": 0.0 }
+  ],
+  "sensor_combine_modes": {
+    "designated": "Use one selected sensor for zone control.",
+    "highest": "Use the hottest assigned sensor for zone control.",
+    "lowest": "Use the coolest assigned sensor for zone control.",
+    "average": "Use the average of all assigned sensors for zone control."
+  },
+  "mapping_rules": [
+    "A sensor may be assigned to more than one zone.",
+    "A zone may use one or more sensors.",
+    "A zone may command one or more relay outputs together.",
+    "A relay output may belong to only one zone to prevent conflicting commands.",
+    "All sensors selected by a group-combine mode must be valid; invalid members invalidate that zone measurement.",
+    "All outputs are disabled until a complete validated hardware configuration is explicitly applied."
   ],
   "outputs": [
     { "channel": 1, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
