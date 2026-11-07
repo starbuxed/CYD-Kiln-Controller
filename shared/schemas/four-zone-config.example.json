@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "controller": {
+    "board_profile": "esp32-s3-devkitc1",
+    "zone_count": 4,
+    "power_supply": {
+      "status": "unknown",
+      "voltage_v": null,
+      "frequency_hz": null,
+      "phase": null,
+      "nameplate_current_a": null,
+      "nameplate_power_w": null
+    }
+  },
+  "sensors": [
+    {
+      "channel": 1,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "zone": 1,
+      "calibration_offset_c": 0.0
+    },
+    {
+      "channel": 2,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "zone": 2,
+      "calibration_offset_c": 0.0
+    },
+    {
+      "channel": 3,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "zone": 3,
+      "calibration_offset_c": 0.0
+    },
+    {
+      "channel": 4,
+      "enabled": false,
+      "sensor_family": "thermocouple",
+      "thermocouple_type": null,
+      "front_end": "max31856_candidate",
+      "zone": 4,
+      "calibration_offset_c": 0.0
+    }
+  ],
+  "zones": [
+    { "zone": 1, "sensor_channel": 1, "heater_output": 1, "enabled": false },
+    { "zone": 2, "sensor_channel": 2, "heater_output": 2, "enabled": false },
+    { "zone": 3, "sensor_channel": 3, "heater_output": 3, "enabled": false },
+    { "zone": 4, "sensor_channel": 4, "heater_output": 4, "enabled": false }
+  ],
+  "outputs": [
+    { "channel": 1, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
+    { "channel": 2, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
+    { "channel": 3, "enabled": false, "driver": "unselected", "safe_state": "inactive" },
+    { "channel": 4, "enabled": false, "driver": "unselected", "safe_state": "inactive" }
+  ]
+}
