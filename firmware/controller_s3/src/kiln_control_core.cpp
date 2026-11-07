@@ -3,7 +3,7 @@
 
 namespace kiln {
 KilnControlCore::KilnControlCore()
-    : profileConfigured_(false), running_(false), paused_(false),
+    : configuredCount_(0), profileConfigured_(false), running_(false), paused_(false),
       maximumAllowedC_(1400.0f), soakToleranceC_(5.0f) {
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i) {
     zoneConfigured_[i] = false;
