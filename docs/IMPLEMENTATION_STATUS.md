@@ -18,12 +18,12 @@
 - Latched local safety fault management and no automatic restart.
 - Existing CRC-protected typed controller protocol and native tests.
 
-## Added on this branch
+## Added on the CAN/safety branch
 
 - Classic CAN 2.0A TWAI stream adapter for ESP32 main and S3 secondary.
 - Protocol fragmentation/reassembly for classic CAN's 8-byte frame payload.
 - Per-CAN-identifier receive reassembly streams to avoid interleaved message corruption.
-- Heartbeats, CAN bus-health checks, timeout behavior, and existing command sequence checks retained over CAN.
+- Heartbeats, CAN bus-health checks, timeout behavior, and command sequence checks retained over CAN.
 - Latched emergency-stop protocol command.
 - Independent master-power permit output abstraction on both boards.
 - CYD permit is enabled only when fresh S3 status says FIRING, CAN/heartbeat are healthy, and no fault is reported.
@@ -32,12 +32,23 @@
 - Documentation for CAN wiring and series permit-contact architecture.
 - Native CAN fragmentation/reassembly test.
 
+## Touchscreen implementation added
+
+- Classic 2.8-inch ILI9341 display support using TFT_eSPI.
+- Separate XPT2046 touch SPI bus and three-point affine calibration persisted in NVS.
+- Live home dashboard with four thermocouple readings, sensor modes, S3 state, CAN status, and faults.
+- Four-segment ramp/soak editor, local profile persistence, and profile upload to the S3.
+- Per-sensor mode, thermocouple type, and calibration-offset controls.
+- Four zone hysteresis and setpoint-offset controls.
+- Start confirmation with front-end readiness checks; the S3 remains authoritative.
+- Pause, resume, stop, diagnostics, and latched touchscreen software E-stop request.
+
 ## Not implemented or not yet verified
 
-- Full CYD touchscreen UI and display/touch driver.
+- Continuous local safety monitoring while idle and paused still requires review/validation.
 - Startup-screen renderer, SD asset loader, icon/theme manager.
 - CYD Wi-Fi setup, embedded HTTP API, authentication, WebSocket updates.
-- Persistent profile editor, firing history, graph rendering, report export.
+- S3-side nonvolatile settings storage and profile read-back.
 - Physical MAX31856 SPI/CS pin assignment and module validation.
 - Physical four heater relay output pin assignment and driver validation.
 - Exact CYD revision and GPIO16 LED-pad verification.
@@ -47,13 +58,11 @@
 - Physical safety-rated circuit design, E-stop/high-limit/contactor test.
 - End-to-end power-loss/watchdog testing and simulation integration.
 
-## Validation completed
+## Validation status
 
-- Standalone host test of CAN fragment generation/reassembly passed in the development environment.
-- Test covers multi-fragment reassembly, order rejection, and timeout rejection.
-- The repository native test script includes the CAN wire test. The full repository native suite has not been run against a local checkout in this session.
-- ESP32 PlatformIO builds have not been run.
-- No boards or kiln power hardware have been physically tested.
+The last known GitHub Actions run passed the native tests and ESP32-S3/classic CYD builds before the touchscreen changes. The touchscreen dependencies and implementation require a fresh CI build.
+
+No boards or kiln power hardware have been physically tested. This branch is not ready for live kiln operation.
 
 ## Safety gate
 
