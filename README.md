@@ -18,7 +18,7 @@ Locally hosted ceramic kiln controller with a CYD ESP32 operator interface and a
 - Dedicated ESP32-S3 with four MAX31856 thermocouple inputs.
 - Four independent digital output commands.
 - CAN 2.0A with heartbeats and fault handling.
-- Separate master-power permit relay from each MCU; both normally-open contacts are wired in series so both boards must permit mains contactor operation.
+- Separate master-power permit relay from each MCU; both normally-open contacts are wired in series so both boards must permit mains contactor operation. An opt-in 2.8-inch CYD build uses the onboard GPIO16 green LED pad as its permit output (soldered connection required).
 - Physical latching E-stop and independent high-limit interrupt the safety-control path independently.
 - Ramp/soak, cone-fire, candling, controlled cooling, PID/zone control, alarms, history.
 - Local operation without cloud/subscription.
