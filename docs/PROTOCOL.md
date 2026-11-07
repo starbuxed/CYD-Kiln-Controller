@@ -65,7 +65,7 @@ The browser and CYD must never send raw GPIO values. The S3 validates typed requ
 | 13 | 8 | Four signed setpoints, deci-degrees C |
 | 21 | 4 | Per-channel sensor fault codes (see sensor manager enum) |
 
-A zero sensor-valid mask means no valid temperature channels are currently available. Zero temperature values are placeholders, not measured ambient readings. Output bits describe logical commands only, not verified physical relay state.
+Sensor fault codes are: 0=OK, 1=open circuit, 2=short (reserved for front ends that report it), 3=conversion/electrical fault, 4=stale sample, 5=out of range, 6=implausible rate, 7=not configured. A zero sensor-valid mask means no valid temperature channels are currently available. Zero temperature values are placeholders, not measured ambient readings. Output bits describe logical commands only, not verified physical relay state.
 
 ## Heartbeats and loss behavior
 
