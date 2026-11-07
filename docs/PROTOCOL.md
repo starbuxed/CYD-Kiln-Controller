@@ -39,17 +39,17 @@ The shared implementation is shared/protocol/kiln_protocol.h. Frames with invali
 | SENSOR_CONFIG | 0x24 | CYD → S3 | Channel + thermocouple type + calibration offset deci-C |
 | SAFETY_CONFIG | 0x25 | CYD → S3 | Maximum allowed temperature deci-C u16/i16 |
 
-All multibyte integers are little-endian.
+All multibyte integers are little-endian. Thermocouple type IDs are K=0, J=1, N=2, R=3, S=4, T=5, E=6, B=7.
 
 ## Command IDs
 
 | Command | ID | Current behavior |
 |---|---:|---|
-| START | 0x01 | Rejected as NOT_READY until profile, sensors, and interlocks exist |
+| START | 0x01 | Starts only when profile, four zone configs, four valid sensors, host link, and all four output channels are ready |
 | PAUSE | 0x02 | Accepted only while FIRING; forces outputs inactive |
-| RESUME | 0x03 | Rejected as NOT_READY until resume checks exist |
+| RESUME | 0x03 | Resumes only from PAUSED after sensor and host-link checks |
 | STOP | 0x04 | Forces all outputs inactive and returns to IDLE unless fault-latched |
-| ACK_FAULT | 0x05 | Not ready; fault recovery checks are not implemented |
+| ACK_FAULT | 0x05 | Clears a latched fault only when all sensors are valid, below the safety limit, and host link is healthy |
 
 The browser and CYD must never send raw GPIO values. The S3 validates typed requests and owns the controller state machine. Configuration is accepted only while IDLE. Profiles are staged by index and installed only after every segment is received and the complete profile validates. Zone, sensor, and safety settings are individually validated. START and RESUME now enter the local control core only when a complete profile, four zone configurations, four valid sensor readings, a healthy host link, and all four configured relay outputs are present. The current hardware build has no sensor driver or enabled relay pin map, so these checks intentionally keep firing blocked.
 
@@ -74,6 +74,6 @@ The S3 contains a hardware-independent profile engine, four zone controllers, a 
 
 ## Current implementation boundary
 
-Implemented: shared frame encoding/parsing, CRC, sequence comparison, CYD UART client, S3 UART server, heartbeat exchange, status snapshots, command acknowledgements, stale command rejection, and safe STOP/PAUSE handling.
+Implemented: shared frame encoding/parsing, CRC, sequence comparison, CYD UART client and configuration senders, S3 UART server, heartbeat exchange, status snapshots, typed configuration staging, command acknowledgements, stale command rejection, and local control-core command handling.
 
 Not yet implemented: MAX31856 (or other) hardware driver, enabled physical GPIO mapping, CYD UI, and end-to-end firing validation.
