@@ -12,6 +12,16 @@ class ControllerLink {
   uint32_t heartbeatAgeMs() const;
   bool sendCommand(uint8_t command);
   bool requestStatus();
+  bool beginProfileConfig(uint8_t segmentCount);
+  bool sendProfileSegment(uint8_t index, int16_t targetDeciC,
+                          int16_t rampDeciCPerHour, uint32_t holdSeconds);
+  bool commitProfileConfig();
+  bool configureZone(uint8_t zone, int16_t hysteresisDeciC,
+                     uint32_t minimumOnMs, uint32_t minimumOffMs,
+                     int16_t setpointOffsetDeciC);
+  bool configureSensor(uint8_t channel, uint8_t thermocoupleType,
+                       int16_t calibrationOffsetDeciC);
+  bool configureSafetyLimit(int16_t maximumDeciC);
 
   bool hasStatus() const { return hasStatus_; }
   uint8_t controllerState() const { return controllerState_; }
