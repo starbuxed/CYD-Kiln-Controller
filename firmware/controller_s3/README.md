@@ -17,6 +17,8 @@ The firmware issues four logical relay-control commands. The user selects and su
 
 Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. Use appropriate protected/isolated interface circuitry. Do not assume that a commanded OFF state proves that the external relay or heater power is physically off.
 
+The four-channel output driver is implemented in `src/relay_outputs.cpp`. It validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins to their logical inactive level before setting them as outputs. All channels are currently disabled and unassigned in `main.cpp`; no relay can be energized by the current application.
+
 No GPIO pin assignments are committed until the exact ESP32-S3 board and output-interface hardware are selected. External biasing must keep all output interfaces inactive while the MCU is reset, unpowered, or booting.
 
 ## Build
@@ -27,4 +29,4 @@ From this directory:
 pio run -e controller_s3_devkitc1
 ```
 
-The current firmware is only a non-firing startup scaffold. Sensor acquisition and the four output drivers are not yet implemented.
+The current application remains non-firing. Temperature acquisition, zone control, communications, and safety supervision are not yet implemented.
