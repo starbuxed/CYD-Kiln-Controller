@@ -75,7 +75,8 @@ void loop() {
   for (uint8_t i = 0; i < SENSOR_CHANNEL_COUNT; ++i)
     kilnTemperaturesC[i] = sensorManager.temperatureC(i);
 
-  if (controllerState == kiln::STATE_FIRING) {
+  if (controllerState == kiln::STATE_FIRING ||
+      controllerState == kiln::STATE_PAUSED) {
     controlCore.update(millis(), kilnTemperaturesC,
                        sensorManager.validMask(),
 #if KILN_S3_UART_RX_PIN >= 0 && KILN_S3_UART_TX_PIN >= 0
@@ -87,6 +88,8 @@ void loop() {
     if (controlCore.faulted()) {
       relayOutputs.allInactive();
       controllerState = kiln::STATE_FAULT;
+    } else if (controllerState == kiln::STATE_PAUSED) {
+      relayOutputs.allInactive();
     } else if (controlCore.profileState() == kiln::PROFILE_COMPLETE) {
       relayOutputs.allInactive();
       controllerState = kiln::STATE_COMPLETE;
