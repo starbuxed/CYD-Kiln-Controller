@@ -25,7 +25,8 @@ enum MessageType : uint8_t {
   MSG_PROFILE_COMMIT = 0x22,
   MSG_ZONE_CONFIG = 0x23,
   MSG_SENSOR_CONFIG = 0x24,
-  MSG_SAFETY_CONFIG = 0x25
+  MSG_SAFETY_CONFIG = 0x25,
+  MSG_SENSOR_MODE_CONFIG = 0x26
 };
 
 enum Command : uint8_t {
