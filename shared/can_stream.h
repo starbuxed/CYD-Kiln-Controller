@@ -19,7 +19,8 @@ class CanStream {
   explicit CanStream(CanNodeRole role) : role_(role) {}
 
   bool begin(int8_t txPin, int8_t rxPin, uint32_t bitrate = 500000) {
-    if (started_ || txPin < 0 || rxPin < 0 || txPin == rxPin) return false;
+    if (started_ || txPin < 0 || rxPin < 0 || txPin == rxPin ||
+        bitrate != 500000) return false;
 
     twai_general_config_t general =
         TWAI_GENERAL_CONFIG_DEFAULT(static_cast<gpio_num_t>(txPin),
@@ -27,14 +28,7 @@ class CanStream {
                                     TWAI_MODE_NORMAL);
     general.tx_queue_len = 12;
     general.rx_queue_len = 24;
-    twai_timing_config_t timing;
-    switch (bitrate) {
-      case 125000: timing = TWAI_TIMING_CONFIG_125KBITS(); break;
-      case 250000: timing = TWAI_TIMING_CONFIG_250KBITS(); break;
-      case 500000: timing = TWAI_TIMING_CONFIG_500KBITS(); break;
-      case 1000000: timing = TWAI_TIMING_CONFIG_1MBITS(); break;
-      default: return false;
-    }
+    twai_timing_config_t timing = TWAI_TIMING_CONFIG_500KBITS();
     twai_filter_config_t filter = TWAI_FILTER_CONFIG_ACCEPT_ALL();
 
     if (twai_driver_install(&general, &timing, &filter) != ESP_OK) return false;
