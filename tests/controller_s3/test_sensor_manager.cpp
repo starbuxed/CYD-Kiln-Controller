@@ -33,7 +33,7 @@ int main() {
   assert(sensors.setMode(1, SENSOR_MODE_LOG_ONLY));
   assert(sensors.monitoringEnabled(1));
   assert(!sensors.controlEnabled(1));
-  assert(!sensors.safetyEnabled(1));
+  assert(sensors.safetyEnabled(1));
   assert(sensors.setMode(2, SENSOR_MODE_LOG_CONTROL));
   assert(sensors.monitoringEnabled(2));
   assert(sensors.controlEnabled(2));
