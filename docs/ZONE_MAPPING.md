@@ -2,6 +2,23 @@
 
 The controller has four physical temperature inputs, four logical heating zones, and four relay command outputs. These are independent resources: their counts and assignments are not assumed to match.
 
+## Per-sensor operating modes
+
+Every physical sensor has one operating mode, selected independently of zone assignment:
+
+| Mode | Acquire/display | Log | PID/control eligible | Kiln safety trip |
+|---|---:|---:|---:|---:|
+| **Off** | No | No | No | No |
+| **Log only** | Yes | Yes | No | No |
+| **Log and control** | Yes | Yes | Yes | No |
+| **Log and safety** | Yes | Yes | No | Yes |
+
+**Off is the only mode that disables monitoring.** Every other mode continues acquiring and logging the sensor's readings and faults.
+
+A sensor in **Log and safety** mode is independently checked for sensor faults, stale readings, implausible readings, and overtemperature, regardless of whether it is assigned to a zone. A sensor in **Log and control** mode is eligible for PID only in zones where it is selected, but it does not independently trip kiln safety. These are intentionally separate responsibilities.
+
+Newly configured sensors default to **Log and safety**. Changing a sensor mode invalidates its previous sample; a fresh valid sample is required before it can be used again.
+
 ## Mapping capabilities
 
 - A logical zone can use one or multiple temperature sensors.
@@ -18,7 +35,7 @@ The controller has four physical temperature inputs, four logical heating zones,
 - **Lowest:** the coolest assigned sensor controls the zone.
 - **Average:** the arithmetic mean controls the zone.
 
-For highest, lowest, and average, every sensor assigned to that group must be valid. A missing sensor invalidates the zone measurement rather than silently changing the calculation. Independent safety supervision must still check individual sensor readings; aggregation must never hide an overtemperature.
+Only sensors in **Log and control** mode may contribute to PID. For highest, lowest, and average, every selected control sensor must be valid. Independent safety supervision checks sensors in **Log and safety** mode individually; aggregation must never hide an overtemperature.
 
 ## Examples
 
@@ -34,18 +51,4 @@ Masks are shown with bit 0 on the right (sensor/output 1).
 
 ## Implementation status
 
-The hardware-independent `ZoneMapping` module validates mappings and calculates zone measurements. It is covered by native tests. The existing kiln control core still uses its earlier one-zone/one-sensor/one-output loop and must next be refactored to consume this mapping layer before this feature is active in firing control. The S3 controller remains non-operational for firing until that integration, hardware configuration, and safety validation are complete.
-
-
-## Per-sensor PID/control enable
-
-Each zone has two sensor selections:
-
-- `sensor_channels`: sensors associated with the zone and retained for monitoring/safety supervision.
-- `control_sensor_channels`: the subset enabled to contribute to the zone's PID/control temperature.
-
-A sensor can therefore be turned OFF for PID control without being turned OFF as a safety sensor. For example, a kiln can use four sensors to monitor temperature but select only sensors 1 and 3 to calculate the zone control temperature.
-
-The controller supports designated, highest, lowest, and average calculations over the control-enabled subset. Every sensor selected for a group calculation must be valid. A disabled-for-PID sensor remains subject to its own fault and overtemperature checks. The user interface should clearly label these controls as **Use for PID** rather than simply Sensor ON/OFF, to avoid implying that safety monitoring has been disabled.
-
-This setting is per zone mapping. If one physical sensor is assigned to multiple zones, it can be enabled for PID in one zone and excluded from PID in another.
+The hardware-independent `ZoneMapping` module validates mappings and calculates zone measurements. It is covered by native tests. The existing kiln control core still uses its earlier one-zone/one-sensor/one-output loop and must next be refactored to consume this mapping layer before this feature is active in firing control. Per-sensor operating modes and their independent monitoring/control/safety masks are implemented in `SensorManager`; the S3 safety and control integration and configuration-protocol/UI wiring remain to be completed. The S3 controller remains non-operational for firing until those integrations, hardware configuration, and safety validation are complete.
