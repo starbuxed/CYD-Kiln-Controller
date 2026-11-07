@@ -1,34 +1,45 @@
 # Firmware Implementation Status
 
-## Increment 1: CYD selection and Pro Micro serial heartbeat
+## Existing prototype increment
 
-Added:
-- PlatformIO build profiles for classic 2.8-inch ILI9341/XPT2046 and ST7789/XPT2046 variants.
-- Catalogue profiles for 2.4-inch, 2.8-inch capacitive, 3.2-inch, 3.5-inch resistive/capacitive, and ESP32-S3 4.3/7-inch CYD families.
-- Compile-time profile selection using `KILN_BOARD_PROFILE`.
-- Classic 2.8-inch reference display/touch pin map and proposed UART2 pins GPIO22/GPIO27.
-- UART is disabled for other profiles until a board-specific UART pin map is verified.
-- Shared framed UART protocol with SOF, version, message type, sequence, payload length, and CRC16-CCITT.
-- ESP32 heartbeat sender and Pro Micro heartbeat receiver/status reporting.
-- Pro Micro safe-output startup and communications-timeout handling.
-- Host-side protocol round-trip and CRC-corruption test source.
+The repository contains an initial CYD board-profile catalogue and a legacy Pro Micro heartbeat prototype. Those files are retained as historical bring-up work; the Pro Micro is no longer the target I/O controller.
 
-## Current limitations
+## Current target architecture
 
-- The ESP32 firmware currently reports the board profile and maintains a Pro Micro heartbeat link; it does not yet initialize the display/touch hardware.
-- No remote output-control command is issued by the ESP32.
-- Pro Micro output pins remain unconfigured (`-1`) by design. No relay can be driven.
-- Sensor drivers and four-channel telemetry are not implemented.
-- Board profiles outside the classic 2.8-inch reference are catalogue/build-selection entries only; their GPIO maps and display/touch initialization are not validated.
-- The 2.8-inch ST7789 profile shares the common classic CYD pin layout but panel color order/inversion and exact revision still require physical confirmation.
-- No authentication, web server, firing-profile engine, or firing history is implemented yet.
+- CYD ESP32: operator touchscreen, local web server, profile editing, configuration, charts, and history.
+- Dedicated ESP32-S3: local authority for four sensor channels, four independent heater zones, four low-voltage output requests, and local safety supervision.
+- Four independently configurable thermocouple channels, with per-channel type selection.
+- Four independent zone-control loops, mapped one-to-one to sensor channels and heater outputs by default.
+- Independent hardware high-limit and final power-disconnect chain.
 
-## Safety limitations
+## Added in this architecture revision
 
-This is a bring-up scaffold, not a kiln controller ready for operation. Do not connect it to energized kiln outputs. The Pro Micro output mapping remains disabled until the exact board, driver topology, active polarity, and independent safety chain are documented and tested.
+- Rewrote `docs/ARCHITECTURE.md` around CYD + dedicated ESP32-S3.
+- Rewrote `docs/HARDWARE.md` for four zones, configurable thermocouples, output isolation, and unknown kiln supply.
+- Updated `docs/DECISIONS.md`, `docs/SAFETY.md`, `docs/ROADMAP.md`, `README.md`, and `docs/PROTOCOL.md`.
+- Added a PlatformIO target and safe startup scaffold in `firmware/controller_s3/`.
+- Added `shared/schemas/four-zone-config.example.json` with four unconfigured sensor channels, four zones, and four inactive outputs.
+- Kept the legacy Pro Micro firmware directory for reference; it is not the planned controller.
 
-A valid serial heartbeat only indicates that the Pro Micro is responding. It does not prove sensor health, relay state, contactor state, or kiln safety.
+## Important hardware assumptions and open questions
 
-## Validation status
+- "Mixed" is currently interpreted as different thermocouple types across the four channels. Each channel has its own thermocouple-type setting.
+- MAX31856 is a candidate thermocouple interface, not an RTD interface. Any PT100/PT1000 channel requires a separate RTD front end such as a MAX31865-class device and separate validation.
+- The kiln supply was reported as "other / not sure". Voltage, frequency, phase, current, power, and heater circuit ratings remain unknown. No SSR, contactor, fuse, conductor, or disconnect ratings have been selected.
+- Exact CYD and ESP32-S3 board revisions, pin maps, sensor modules, output driver circuits, and independent safety hardware remain to be selected and verified.
 
-The standalone protocol test source was compiled with g++ using C++11 and passed the frame round-trip, CRC-corruption rejection, and oversized-payload checks. PlatformIO is not installed in the current environment, so neither MCU firmware target has been built here. No physical hardware test has been run. Build both MCU targets and test the exact board revisions before connecting hardware.
+## Not implemented yet
+
+- Sensor front-end drivers and four-channel temperature acquisition.
+- Four independent PID/time-proportioning loops.
+- Output-driver GPIO mapping, hardware feedback, and driver fault detection.
+- CYD-to-S3 framed communications implementation.
+- Dedicated controller watchdog/fault manager.
+- CYD display/touch integration, web server, authentication, profiles, and firing history.
+- Complete electrical drawings and independent high-limit/power-disconnect design.
+
+## Safety and validation status
+
+The new ESP32-S3 firmware is only a non-firing startup scaffold. No sensor pins or heater output pins are assigned, and there is no code path to energize a heater output.
+
+The earlier standalone protocol test was compiled with g++ using C++11 and passed its round-trip, CRC-corruption, and oversized-payload checks. No PlatformIO build or physical hardware test has been run for the new ESP32-S3 target. Do not connect energized kiln outputs.
