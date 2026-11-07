@@ -23,3 +23,7 @@
 CAN is the data/control transport, not the emergency-stop circuit. Each MCU requires its own external CAN transceiver. Each MCU also requires a separate shutdown request interface to a fail-safe hardware safety circuit. A physical latching E-stop and independent high-limit must interrupt the safety-contactor path without relying on either controller.
 
 No GPIO mapping should be enabled until exact boards, schematics, transceivers, sensor modules, relay input interfaces, and shutdown circuit have been confirmed.
+
+## Main board master-power permit GPIO
+
+The common 2.8-inch CYD's exposed general-purpose pins GPIO22 and GPIO27 are used for CAN. GPIO35 is input-only and GPIO21 is the TFT backlight. Therefore the CYD master-power permit GPIO remains disabled until the exact board revision and an additional pin/expander are selected. Do not claim the two-permit hardware interlock is fully wired until this is resolved.
