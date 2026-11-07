@@ -86,6 +86,12 @@ bool ControllerLink::configureSensor(uint8_t channel, uint8_t type,
   sendFrame(kiln::MSG_SENSOR_CONFIG, payload, sizeof(payload));
   return true;
 }
+bool ControllerLink::configureSensorMode(uint8_t channel, uint8_t mode) {
+  if (!connected() || channel >= 4 || mode > 3) return false;
+  const uint8_t payload[2] = {channel, mode};
+  sendFrame(kiln::MSG_SENSOR_MODE_CONFIG, payload, sizeof(payload));
+  return true;
+}
 bool ControllerLink::configureSafetyLimit(int16_t maximumDeciC) {
   if (!connected()) return false;
   uint8_t payload[2];
@@ -106,7 +112,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
   if (frame.type == kiln::MSG_STATUS) {
     // S3 status payload: state, fault flags(2), sensor mask, output mask,
     // four temperatures and four setpoints, all signed deci-degrees.
-    if (frame.length != 25) return;
+    if (frame.length != 29) return;
     controllerState_ = frame.payload[0];
     faultFlags_ = static_cast<uint16_t>(frame.payload[1]) |
                   (static_cast<uint16_t>(frame.payload[2]) << 8);
@@ -116,6 +122,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
       temperatures_[i] = kiln::getI16(frame.payload + 5 + (i * 2));
       setpoints_[i] = kiln::getI16(frame.payload + 13 + (i * 2));
       sensorFaults_[i] = frame.payload[21 + i];
+      sensorModes_[i] = frame.payload[25 + i];
     }
     hasStatus_ = true;
     return;
