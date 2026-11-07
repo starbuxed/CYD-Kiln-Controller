@@ -2,11 +2,13 @@
 #include "relay_outputs.h"
 #include "kiln_control_core.h"
 #include "sensor_manager.h"
+#include "max31856_array.h"
 
 extern kiln::RelayOutputs relayOutputs;
 extern kiln::ControllerState controllerState;
 extern kiln::KilnControlCore controlCore;
 extern kiln::SensorManager sensorManager;
+extern kiln::Max31856Array sensorFrontend;
 extern float kilnTemperaturesC[4];
 
 static constexpr uint32_t HOST_TIMEOUT_MS = 2500;
@@ -229,9 +231,15 @@ void ControllerLink::handleConfiguration(const kiln::Frame& frame) {
     case kiln::MSG_SENSOR_CONFIG:
       if (frame.length == 4 && frame.payload[0] < 4 && frame.payload[1] <= kiln::TC_B) {
         const float offset = kiln::getI16(frame.payload + 2) / 10.0f;
-        result = sensorManager.configure(frame.payload[0],
-                    static_cast<kiln::ThermocoupleType>(frame.payload[1]), offset)
-                   ? kiln::RESULT_OK : kiln::RESULT_BAD_LENGTH;
+        const kiln::ThermocoupleType type =
+            static_cast<kiln::ThermocoupleType>(frame.payload[1]);
+        if (sensorManager.configure(frame.payload[0], type, offset)) {
+          result = (!sensorFrontend.ready() ||
+                    sensorFrontend.configureChannel(frame.payload[0], type))
+                     ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
+        } else {
+          result = kiln::RESULT_BAD_LENGTH;
+        }
       }
       break;
     case kiln::MSG_SAFETY_CONFIG:
