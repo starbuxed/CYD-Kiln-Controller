@@ -5,6 +5,11 @@ static constexpr uint32_t SENSOR_LOSS_GRACE_MS = 1500UL;
 SafetyManager::SafetyManager()
     : faults_(FAULT_NONE), invalidSinceMs_(0), invalidTimerActive_(false) {}
 void SafetyManager::latch(uint16_t fault) { faults_ |= fault; }
+void SafetyManager::update(uint32_t nowMs, uint8_t validMask,
+                           const float temps[4], bool linkHealthy,
+                           bool firing, float maximumAllowedC) {
+  update(nowMs, 0x0F, validMask, temps, linkHealthy, firing, maximumAllowedC);
+}
 void SafetyManager::update(uint32_t nowMs, uint8_t safetyMask,
                            uint8_t validMask, const float temps[4],
                            bool linkHealthy, bool firing,
@@ -39,6 +44,10 @@ void SafetyManager::update(uint32_t nowMs, uint8_t safetyMask,
       latch(FAULT_OVERTEMP);
     }
   }
+}
+bool SafetyManager::acknowledge(uint8_t validMask, bool linkHealthy,
+                               const float temps[4], float maximumAllowedC) {
+  return acknowledge(0x0F, validMask, linkHealthy, temps, maximumAllowedC);
 }
 bool SafetyManager::acknowledge(uint8_t safetyMask, uint8_t validMask,
                                bool linkHealthy, const float temps[4],
