@@ -25,7 +25,6 @@
 - Typed UART configuration messages stage/commit ramp-soak profiles and configure all four zones, per-channel thermocouple type/calibration, per-sensor operating mode, and maximum safety temperature.
 - START/PAUSE/RESUME/STOP/ACK_FAULT commands are wired to the local control core; START and RESUME return NOT_READY unless all readiness checks pass.
 - Portable host test sources and a reproducible native C++ test script; GitHub Actions runs the portable tests on pushes and pull requests.
-- CYD build source filter excludes the obsolete Pro Micro transport from the current S3 architecture.
 
 ## Not yet implemented or verified
 
