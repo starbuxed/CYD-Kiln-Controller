@@ -16,7 +16,8 @@ enum SensorCombineMode : uint8_t {
 
 struct ZoneMappingConfig {
   bool enabled;
-  uint8_t sensorMask;
+  uint8_t sensorMask;        // Sensors assigned to / safety-associated with this zone.
+  uint8_t controlSensorMask; // Subset enabled to contribute to the zone PID/control reading.
   uint8_t outputMask;
   SensorCombineMode combineMode;
   uint8_t designatedSensor;
@@ -39,6 +40,7 @@ class ZoneMapping {
   ZoneMeasurement measure(uint8_t zone, const float temperaturesC[MAPPING_SENSOR_COUNT],
                           uint8_t validSensorMask) const;
   uint8_t requiredSensorMask() const;
+  uint8_t controlSensorMask() const;
   uint8_t enabledZoneMask() const;
   uint8_t assignedOutputMask() const;
   uint8_t outputMaskForZone(uint8_t zone) const;
