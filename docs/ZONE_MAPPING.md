@@ -35,7 +35,7 @@ Newly configured sensors default to **Log and safety**. Changing a sensor mode i
 - **Lowest:** the coolest assigned sensor controls the zone.
 - **Average:** the arithmetic mean controls the zone.
 
-Only sensors in **Log and control** mode may contribute to PID. For highest, lowest, and average, every selected control sensor must be valid. Independent safety supervision checks sensors in both **Log and control** and **Log and safety** modes individually; aggregation must never hide an overtemperature.
+Only sensors in **Log and control** mode may contribute to PID. For highest, lowest, and average, every selected control sensor must be valid. Independent kiln safety supervision checks every enabled sensor individually, including sensors not assigned to a zone; aggregation must never hide an overtemperature.
 
 ## Examples
 
