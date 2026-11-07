@@ -4,7 +4,7 @@
 #include "kiln_control_core.h"
 #include "sensor_manager.h"
 #include "max31856_array.h"
-#include "shutdown_output.h"
+#include "master_power_permit.h"
 
 // Dedicated ESP32-S3: thermocouple acquisition, local control, outputs,
 // and local safety. All physical pin assignments remain disabled until the
@@ -22,8 +22,11 @@ static constexpr uint8_t HEATER_ZONE_COUNT = 4;
 #ifndef KILN_S3_CAN_BITRATE
 #define KILN_S3_CAN_BITRATE 500000
 #endif
-#ifndef KILN_S3_SHUTDOWN_REQUEST_PIN
-#define KILN_S3_SHUTDOWN_REQUEST_PIN -1
+#ifndef KILN_S3_MASTER_POWER_PERMIT_PIN
+#define KILN_S3_MASTER_POWER_PERMIT_PIN 7
+#endif
+#ifndef KILN_S3_MASTER_POWER_PERMIT_ACTIVE_HIGH
+#define KILN_S3_MASTER_POWER_PERMIT_ACTIVE_HIGH 1
 #endif
 
 kiln::RelayOutputs relayOutputs;
@@ -35,7 +38,7 @@ float kilnTemperaturesC[4] = {0, 0, 0, 0};
 
 static ControllerLink controllerLink;
 static kiln::CanStream controllerBus(kiln::CAN_ROLE_SECONDARY);
-static ShutdownRequestOutput secondaryShutdownRequest;
+static MasterPowerPermit secondaryPowerPermit;
 
 // Deliberately disabled until the exact S3 board pinout, relay input
 // electrical interface, and external safety circuit have been verified.
@@ -77,7 +80,8 @@ void setup() {
   Serial.begin(115200);
   delay(200);
   controllerState = kiln::STATE_SELF_TEST;
-  secondaryShutdownRequest.begin(KILN_S3_SHUTDOWN_REQUEST_PIN);
+  secondaryPowerPermit.begin(KILN_S3_MASTER_POWER_PERMIT_PIN,
+                              KILN_S3_MASTER_POWER_PERMIT_ACTIVE_HIGH != 0);
 
   const bool outputsReady = relayOutputs.begin(outputConfig);
   relayOutputs.allInactive();
@@ -97,7 +101,7 @@ void setup() {
 
   if (!outputsReady) {
     controllerState = kiln::STATE_FAULT;
-    secondaryShutdownRequest.assertShutdown();
+    secondaryPowerPermit.drop();
   }
 
   if (!controllerLink.begin(controllerBus, KILN_S3_CAN_TX_PIN,
@@ -137,7 +141,17 @@ void loop() {
 
   if (controllerState == kiln::STATE_FAULT) {
     relayOutputs.allInactive();
-    secondaryShutdownRequest.assertShutdown();
   }
+
+  const uint8_t safetyMask = sensorManager.safetyEnabledMask();
+  const uint8_t validMask = sensorManager.validMask();
+  const bool localSafetyReady = safetyMask != 0 &&
+      (validMask & safetyMask) == safetyMask &&
+      !controlCore.faulted() &&
+      controllerLink.hostLinkHealthy();
+  const bool secondaryPermit =
+      controllerState == kiln::STATE_FIRING && localSafetyReady &&
+      relayOutputs.configuredCount() == kiln::RELAY_OUTPUT_COUNT;
+  secondaryPowerPermit.setPermit(secondaryPermit);
   delay(2);
 }
