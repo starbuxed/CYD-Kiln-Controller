@@ -52,14 +52,11 @@ int main() {
   assert(safety.acknowledge(0x0F, true, temps, 1200.0f));
   assert(!safety.faulted());
 
-  // Only Log and safety sensors participate in independent safety trips.
+  // Kiln safety is the OR of every enabled sensor, including Log only.
   SafetyManager modeSafety;
   float modeTemps[4] = {100.0f, 1400.0f, 100.0f, 100.0f};
-  modeSafety.update(0, 0x01, 0x0F, modeTemps, true, true, 1200.0f);
-  assert(!modeSafety.faulted()); // Hot channel 2 is Log and control/log only, not safety.
-  modeTemps[0] = 1300.0f;
-  modeSafety.update(10, 0x01, 0x0F, modeTemps, true, true, 1200.0f);
-  assert(modeSafety.faults() & FAULT_OVERTEMP);
+  modeSafety.update(0, 0x0F, 0x0F, modeTemps, true, true, 1200.0f);
+  assert(modeSafety.faults() & FAULT_OVERTEMP); // Any enabled sensor can trip.
   SafetyManager noSafetyMode;
   noSafetyMode.update(0, 0x00, 0x0F, modeTemps, true, true, 1200.0f);
   assert(!noSafetyMode.faulted());
