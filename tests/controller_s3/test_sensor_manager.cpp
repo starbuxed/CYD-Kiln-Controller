@@ -37,13 +37,13 @@ int main() {
   assert(sensors.setMode(2, SENSOR_MODE_LOG_CONTROL));
   assert(sensors.monitoringEnabled(2));
   assert(sensors.controlEnabled(2));
-  assert(!sensors.safetyEnabled(2));
+  assert(sensors.safetyEnabled(2));
   assert(sensors.setMode(3, SENSOR_MODE_LOG_SAFETY));
   assert(sensors.monitoringEnabled(3));
   assert(!sensors.controlEnabled(3));
   assert(sensors.safetyEnabled(3));
   assert(sensors.monitoringMask() == 0x0E);
   assert(sensors.controlEnabledMask() == 0x04);
-  assert(sensors.safetyEnabledMask() == 0x08);
+  assert(sensors.safetyEnabledMask() == 0x0C);
   return 0;
 }
