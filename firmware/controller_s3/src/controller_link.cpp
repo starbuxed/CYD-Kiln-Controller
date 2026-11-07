@@ -300,7 +300,8 @@ void ControllerLink::update() {
 
   if (hostHeartbeatSeen_ &&
       static_cast<uint32_t>(now - lastHostHeartbeatMs_) > HOST_TIMEOUT_MS &&
-      controllerState == kiln::STATE_FIRING) {
+      (controllerState == kiln::STATE_FIRING ||
+       controllerState == kiln::STATE_PAUSED)) {
     relayOutputs.allInactive();
     controlCore.latchFault(kiln::FAULT_HOST_LINK);
     controllerState = kiln::STATE_FAULT;
