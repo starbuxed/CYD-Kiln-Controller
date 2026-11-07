@@ -22,7 +22,7 @@
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
       "calibration_offset_c": 0,
-      "mode": "log_safety"
+      "mode": "off"
     },
     {
       "channel": 2,
@@ -31,7 +31,7 @@
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
       "calibration_offset_c": 0,
-      "mode": "log_safety"
+      "mode": "off"
     },
     {
       "channel": 3,
@@ -40,7 +40,7 @@
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
       "calibration_offset_c": 0,
-      "mode": "log_safety"
+      "mode": "off"
     },
     {
       "channel": 4,
@@ -49,7 +49,7 @@
       "thermocouple_type": null,
       "front_end": "max31856_candidate",
       "calibration_offset_c": 0,
-      "mode": "log_safety"
+      "mode": "off"
     }
   ],
   "zones": [
