@@ -7,7 +7,8 @@ Locally hosted ceramic kiln controller with a CYD ESP32 operator interface and a
 - **CYD main:** touchscreen, local web application, Wi-Fi, profiles, graphs, history, SD-card files, startup screen, icons, themes, operator commands.
 - **ESP32-S3 secondary:** four MAX31856 thermocouple channels, four independent low-voltage output commands, local control logic, local safety supervision.
 - **CAN bus:** wired inter-controller communications using ESP32 TWAI and one external CAN transceiver per board.
-- **Independent shutdown:** each MCU has a separate hardwired shutdown-request interface. Physical latching E-stop and independent kiln-side high-limit must interrupt the power-contactor control circuit without CAN or firmware.
+- **Dual master-power permit:** one relay from each MCU; their normally-open contacts are wired in series, so both boards must permit the main contactor.
+- **Independent safety:** physical latching E-stop and independent kiln-side high-limit interrupt the safety-control path without CAN or firmware.
 
 > **Safety notice:** Experimental development firmware, not a certified kiln controller. Keep kiln power disconnected during software bring-up. Never drive bare relay coils or heater loads directly from ESP32 GPIO. Independent E-stop, high-limit, contactor, fusing, grounding, and power isolation are mandatory.
 
@@ -18,7 +19,7 @@ Locally hosted ceramic kiln controller with a CYD ESP32 operator interface and a
 - Dedicated ESP32-S3 with four MAX31856 thermocouple inputs.
 - Four independent digital output commands.
 - CAN 2.0A with heartbeats and fault handling.
-- Separate master-power permit relay from each MCU; both normally-open contacts are wired in series so both boards must permit mains contactor operation. An opt-in 2.8-inch CYD build uses the onboard GPIO16 green LED pad as its permit output (soldered connection required).
+- Separate master-power permit relay from each MCU; both normally-open contacts are wired in series so both boards must permit contactor operation. The opt-in 2.8-inch CYD build uses onboard GPIO16 (green LED channel) as its permit output; a soldered connection and buffer are required.
 - Physical latching E-stop and independent high-limit interrupt the safety-control path independently.
 - Ramp/soak, cone-fire, candling, controlled cooling, PID/zone control, alarms, history.
 - Local operation without cloud/subscription.
@@ -33,7 +34,7 @@ Locally hosted ceramic kiln controller with a CYD ESP32 operator interface and a
 - `web/` — local browser application (pending).
 - `assets/` — default startup graphics/icons (pending).
 - `profiles/` — example profiles.
-- `docs/` — architecture, board, safety, hardware, protocol.
+- `docs/` — architecture, board, safety, hardware, protocol, CAN wiring, and master-power interlock.
 - `tests/` — portable tests.
 
 ## Status
