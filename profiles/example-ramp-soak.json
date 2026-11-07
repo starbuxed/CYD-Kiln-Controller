@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "profile_id": "example-ramp-soak",
+  "name": "Example Ramp and Soak",
+  "description": "Illustrative profile structure only; not a kiln firing recommendation.",
+  "temperature_unit": "C",
+  "segments": [
+    {
+      "segment_id": 1,
+      "name": "Ramp example",
+      "target_temperature": 200,
+      "ramp_rate_per_hour": 60,
+      "hold_minutes": 0
+    },
+    {
+      "segment_id": 2,
+      "name": "Soak example",
+      "target_temperature": 200,
+      "ramp_rate_per_hour": 0,
+      "hold_minutes": 10
+    }
+  ],
+  "notes": [
+    "Illustrative data only. This is not a recommended firing schedule.",
+    "Validate all values against the kiln, clay/glaze manufacturer, thermocouples, and approved operating limits."
+  ]
+}
