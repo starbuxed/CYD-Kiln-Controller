@@ -17,6 +17,8 @@
 - Four independent hysteresis zone controllers with configurable deadband and minimum on/off dwell.
 - Four-channel sensor manager with per-channel thermocouple type selection (K/J/N/R/S/T/E/B), range checks, sample freshness, driver-fault handling, implausible-rate detection, and four explicit operating modes: Off, Log only, Log and control, and Log and safety.
 - Per-sensor mode masks distinguish acquisition/monitoring, PID eligibility, and safety supervision. Newly configured sensors default to Log and safety; changing modes invalidates the old sample until a fresh reading arrives.
+- Per-sensor operating modes are configurable over UART and reported to the CYD in the 29-byte status payload.
+- The firing core requires all four one-to-one zone inputs to be valid and in Log and control mode. The local safety manager checks only sensors in Log and safety mode for sensor-loss and overtemperature trips; Log only and Log and control readings do not independently trip kiln safety.
 - Local latched safety manager for sensor loss, sensor range, overtemperature, and host-link faults.
 - Four-zone control core coordinating profile execution, waiting for all four measured zones to reach target before starting soak timers, independent zone control, and fail-safe output masks.
 - S3 status telemetry reports sensor-valid bits and latched control-core fault flags.
@@ -28,8 +30,8 @@
 ## Not yet implemented or verified
 
 - MAX31856 SPI driver source is implemented with per-channel K/J/N/R/S/T/E/B selection and open/range fault mapping, but the S3 SPI and chip-select pins remain unset and no physical sensor modules have been tested.
-- Per-sensor operating-mode configuration is not yet wired into the UART configuration protocol or CYD UI; the sensor manager API and example schema are in place.
-- The safety manager and zone control core are not yet consuming the new per-sensor safety/control masks. Until that integration is complete, do not assume the four modes are fully enforced during firing.
+- The CYD browser/touchscreen UI does not yet expose the operating-mode selector; the CYD UART client now has a mode configuration sender and status getter for the future UI.
+- Flexible sensor-to-zone and zone-to-output mapping remains a standalone module and is not yet integrated into the active firing core. The current firing core still expects one control-enabled sensor per zone.
 - Profile persistence in nonvolatile storage and the CYD-side profile editor/transfer workflow.
 - Verified physical GPIO assignments for the exact S3 board and external relay input interface.
 - CYD display/touchscreen UI, Wi-Fi setup, HTTP API, browser authentication, and live web updates.
@@ -42,7 +44,7 @@
 - All relay output pins remain disabled and unassigned in the current build.
 - Outputs are initialized inactive and commanded inactive on STOP, PAUSE, and latched faults.
 - Loss of the CYD heartbeat during a firing forces all outputs inactive and latches a host-link fault.
-- Current fault acknowledgement still requires all four sensor channels valid, readings below the configured safety limit, and a healthy host link; it must be updated to use the configured safety-mode sensor mask.
+- Fault acknowledgement requires all configured Log and safety sensors to be valid and below the configured safety limit, plus a healthy host link.
 - No automatic restart or resume after reset, brownout, sensor loss, or communication failure.
 
 ## Validation status
