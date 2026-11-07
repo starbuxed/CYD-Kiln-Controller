@@ -14,6 +14,8 @@ class KilnControlCore {
  public:
   KilnControlCore();
   bool configureProfile(const RampSoakSegment* segments, uint8_t count);
+  bool setMaximumAllowedTemperatureC(float maximumC);
+  bool setSoakToleranceC(float toleranceC);
   bool configureZone(uint8_t zone, const ZoneRuntimeConfig& config);
   bool start(uint32_t nowMs, const float temperaturesC[4],
              uint8_t sensorValidMask, bool hostLinkHealthy);
@@ -46,6 +48,7 @@ class KilnControlCore {
   bool running_;
   bool paused_;
   float maximumAllowedC_;
+  float soakToleranceC_;
   void allOff();
   bool allSensorsValid(uint8_t mask) const;
 };
