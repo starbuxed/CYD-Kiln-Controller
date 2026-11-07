@@ -1,15 +1,24 @@
 #include <Arduino.h>
 #include "board_config.h"
 #include "controller_link.h"
+#include "master_power_permit.h"
 
-#if KILN_UART_PINMAP_AVAILABLE
-static HardwareSerial controllerSerial(2);
+#if KILN_CAN_PINMAP_AVAILABLE
+static kiln::CanStream controllerBus(kiln::CAN_ROLE_MAIN);
 static ControllerLink controllerLink;
 #endif
 
+#ifndef KILN_MAIN_POWER_PERMIT_PIN
+#define KILN_MAIN_POWER_PERMIT_PIN -1
+#endif
+#ifndef KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH
+#define KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH 1
+#endif
+static MasterPowerPermit mainPowerPermit;
+
 static void printBoardProfile() {
   Serial.println();
-  Serial.println("CYD Kiln Controller - Operator Interface");
+  Serial.println("CYD Kiln Controller - Main Operator Interface");
   Serial.printf("Board profile: %s\n", KILN_BOARD.name);
   Serial.printf("Model family: %s\n", KILN_BOARD.commonModel);
   Serial.printf("Panel: %u x %u\n", KILN_BOARD.width, KILN_BOARD.height);
@@ -18,40 +27,65 @@ static void printBoardProfile() {
                 static_cast<unsigned>(KILN_BOARD.touchDriver));
   Serial.printf("Pin map marked verified: %s\n",
                 KILN_BOARD.pinMapVerified ? "yes" : "no");
-#if KILN_UART_PINMAP_AVAILABLE
-  Serial.printf("S3 UART2 RX/TX: %d / %d at %lu baud\n",
-                KILN_UART_RX_PIN, KILN_UART_TX_PIN,
-                static_cast<unsigned long>(KILN_UART_BAUD));
+#if KILN_CAN_PINMAP_AVAILABLE
+  Serial.printf("CAN TX/RX: %d / %d at %lu bit/s\n",
+                KILN_CAN_TX_PIN, KILN_CAN_RX_PIN,
+                static_cast<unsigned long>(KILN_CAN_BITRATE));
 #else
-  Serial.println("S3 UART disabled: this profile has no verified UART pin map.");
+  Serial.println("CAN disabled: exact CYD pins are not yet verified.");
 #endif
-  Serial.println("CYD is the operator interface; S3 owns kiln control and interlocks.");
+  Serial.printf("CYD master-power permit relay configured: %s\n",
+                mainPowerPermit.configured() ? "yes" : "no");
+  Serial.println("CYD owns UI/web/SD; the ESP32-S3 owns sensor and output control.");
+}
+
+// Call this from the touchscreen emergency-stop control or a local trip input.
+// This immediately releases the CYD's own master-power permit relay; the CAN
+// emergency command is only a supplementary notification to the S3.
+void requestEmergencyShutdown() {
+  mainPowerPermit.drop();
+#if KILN_CAN_PINMAP_AVAILABLE
+  controllerLink.sendCommand(kiln::CMD_ESTOP);
+#endif
 }
 
 void setup() {
   Serial.begin(115200);
   delay(250);
+  mainPowerPermit.begin(KILN_MAIN_POWER_PERMIT_PIN,
+                        KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH != 0);
   printBoardProfile();
 
-#if KILN_UART_PINMAP_AVAILABLE
-  controllerLink.begin(controllerSerial, KILN_UART_RX_PIN, KILN_UART_TX_PIN,
-                       KILN_UART_BAUD);
+#if KILN_CAN_PINMAP_AVAILABLE
+  if (!controllerLink.begin(controllerBus, KILN_CAN_TX_PIN, KILN_CAN_RX_PIN,
+                            KILN_CAN_BITRATE)) {
+    Serial.println("CAN initialization failed; firing must remain unavailable.");
+  }
 #endif
 }
 
 void loop() {
-#if KILN_UART_PINMAP_AVAILABLE
+#if KILN_CAN_PINMAP_AVAILABLE
   controllerLink.update();
 
   static uint32_t lastReport = 0;
   const uint32_t now = millis();
   if (static_cast<uint32_t>(now - lastReport) >= 1000) {
     lastReport = now;
-    Serial.printf("S3 link: %s, heartbeat age: %lu ms, controller state: %u\n",
+    Serial.printf("S3 link: %s, heartbeat age: %lu ms, state: %u, faults: 0x%04X\n",
                   controllerLink.connected() ? "ONLINE" : "OFFLINE",
                   static_cast<unsigned long>(controllerLink.heartbeatAgeMs()),
-                  controllerLink.controllerState());
+                  controllerLink.controllerState(), controllerLink.faultFlags());
   }
 #endif
+#if KILN_CAN_PINMAP_AVAILABLE
+  const bool mainPermit = controllerLink.connected() &&
+      controllerLink.statusFresh() &&
+      controllerLink.controllerState() == kiln::STATE_FIRING &&
+      controllerLink.faultFlags() == 0;
+#else
+  const bool mainPermit = false;
+#endif
+  mainPowerPermit.setPermit(mainPermit);
   delay(2);
 }

@@ -61,8 +61,9 @@ The four channels are independent commands; the firmware does not infer the phys
 
 - Use a properly regulated low-voltage supply for the ESP32-S3 and sensor front ends.
 - Confirm the exact ESP32-S3 board logic voltage and pin availability.
-- Use a framed, CRC-protected UART link between the CYD and dedicated controller. The default classic 2.8-inch CYD profile uses GPIO27 TX / GPIO22 RX; the ESP32-S3-DevKitC-1 build uses GPIO17 RX / GPIO18 TX.
-- Wire CYD TX GPIO27 to S3 RX GPIO17, CYD RX GPIO22 to S3 TX GPIO18, and connect logic ground. Do not connect the boards' 5 V rails together.
+- Use classic CAN 2.0A over the ESP32 TWAI peripheral with one external compatible CAN transceiver per board. The classic 2.8-inch CYD reference uses GPIO27 TX / GPIO22 RX; the ESP32-S3-DevKitC-1 reference uses GPIO5 TX / GPIO4 RX. CANH connects to CANH and CANL to CANL; use twisted pair and two 120-ohm end terminators. See docs/CAN_WIRING.md.
+- Each board has a separate master-power permit relay output. Their normally-open dry contacts are wired in series in the contactor control circuit, so both must energize to permit mains contactor operation. CYD GPIO remains disabled until the exact CYD revision exposes a verified unused pin; the S3 DevKitC-1 reference uses GPIO7. See docs/MASTER_POWER_INTERLOCK.md.
+- The physical latching E-stop and independent high-limit must interrupt the safety-control path directly. Neither CAN nor either MCU is the sole safety mechanism.
 - Both boards use 3.3 V logic, but verify exact pin assignments, cable routing, and grounding.
 - Keep sensor wiring separated from relay/heater power wiring.
 - Use appropriate interface isolation where required by the actual installation.

@@ -7,7 +7,8 @@ enum SafetyFault : uint16_t {
   FAULT_OVERTEMP = 1u << 1,
   FAULT_HOST_LINK = 1u << 2,
   FAULT_SENSOR_RANGE = 1u << 3,
-  FAULT_PROFILE = 1u << 4
+  FAULT_PROFILE = 1u << 4,
+  FAULT_ESTOP = 1u << 5
 };
 class SafetyManager {
  public:

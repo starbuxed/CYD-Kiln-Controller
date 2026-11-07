@@ -15,21 +15,22 @@ static constexpr uint32_t HOST_TIMEOUT_MS = 2500;
 static constexpr uint32_t HEARTBEAT_INTERVAL_MS = 500;
 static constexpr uint32_t STATUS_INTERVAL_MS = 500;
 
-void ControllerLink::begin(HardwareSerial& serial, int8_t rxPin, int8_t txPin,
-                           uint32_t baud) {
-  serial_ = &serial;
-  serial_->begin(baud, SERIAL_8N1, rxPin, txPin);
+bool ControllerLink::begin(kiln::CanStream& stream, int8_t txPin, int8_t rxPin,
+                           uint32_t bitrate) {
+  stream_ = &stream;
+  if (!stream_->begin(txPin, rxPin, bitrate)) return false;
   const uint32_t now = millis();
   lastHostHeartbeatMs_ = now;
   lastHeartbeatTxMs_ = now;
   lastStatusTxMs_ = now;
   hostHeartbeatSeen_ = false;
   commandSequenceSeen_ = false;
+  return true;
 }
 
 void ControllerLink::sendFrame(uint8_t type, uint16_t sequence,
                                const uint8_t* payload, uint8_t length) {
-  if (!serial_ || length > kiln::MAX_PAYLOAD) return;
+  if (!stream_ || length > kiln::MAX_PAYLOAD) return;
   kiln::Frame frame;
   frame.type = type;
   frame.sequence = sequence;
@@ -37,7 +38,7 @@ void ControllerLink::sendFrame(uint8_t type, uint16_t sequence,
   for (uint8_t i = 0; i < length; ++i) frame.payload[i] = payload[i];
   uint8_t bytes[kiln::MAX_FRAME_SIZE];
   const size_t count = kiln::encode(frame, bytes, sizeof(bytes));
-  if (count) serial_->write(bytes, count);
+  if (count) stream_->write(bytes, count);
 }
 
 void ControllerLink::sendAck(uint16_t sequence, uint8_t command, uint8_t result) {
@@ -128,6 +129,13 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
       } else {
         result = kiln::RESULT_NOT_READY;
       }
+      break;
+
+    case kiln::CMD_ESTOP:
+      controlCore.latchFault(kiln::FAULT_ESTOP);
+      relayOutputs.allInactive();
+      controllerState = kiln::STATE_FAULT;
+      result = kiln::RESULT_OK;
       break;
 
     case kiln::CMD_STOP:
@@ -305,9 +313,9 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
 }
 
 void ControllerLink::update() {
-  if (!serial_) return;
-  while (serial_->available() > 0) {
-    const uint8_t byteIn = static_cast<uint8_t>(serial_->read());
+  if (!stream_) return;
+  while (stream_->available() > 0) {
+    const uint8_t byteIn = static_cast<uint8_t>(stream_->read());
     kiln::Frame frame;
     if (parser_.feed(byteIn, frame)) handleFrame(frame);
   }
@@ -333,6 +341,6 @@ void ControllerLink::update() {
 }
 
 bool ControllerLink::hostLinkHealthy() const {
-  return hostHeartbeatSeen_ &&
+  return stream_ && stream_->healthy() && hostHeartbeatSeen_ &&
          static_cast<uint32_t>(millis() - lastHostHeartbeatMs_) <= HOST_TIMEOUT_MS;
 }

@@ -2,11 +2,12 @@
 
 #include <Arduino.h>
 #include "kiln_protocol.h"
+#include "can_stream.h"
 
 class ControllerLink {
  public:
-  void begin(HardwareSerial& serial, int8_t rxPin, int8_t txPin,
-             uint32_t baud = 115200);
+  bool begin(kiln::CanStream& stream, int8_t txPin, int8_t rxPin,
+             uint32_t bitrate = 500000);
   void update();
   bool connected() const;
   uint32_t heartbeatAgeMs() const;
@@ -25,6 +26,10 @@ class ControllerLink {
   bool configureSensorMode(uint8_t channel, uint8_t mode);
 
   bool hasStatus() const { return hasStatus_; }
+  bool statusFresh(uint32_t maximumAgeMs = 1500) const {
+    return hasStatus_ &&
+           static_cast<uint32_t>(millis() - lastStatusRxMs_) <= maximumAgeMs;
+  }
   uint8_t controllerState() const { return controllerState_; }
   uint16_t faultFlags() const { return faultFlags_; }
   uint8_t sensorValidMask() const { return sensorValidMask_; }
@@ -44,11 +49,12 @@ class ControllerLink {
   void handleFrame(const kiln::Frame& frame);
   void sendFrame(uint8_t type, const uint8_t* payload, uint8_t length);
 
-  HardwareSerial* serial_ = nullptr;
+  kiln::CanStream* stream_ = nullptr;
   kiln::Parser parser_;
   uint16_t txSequence_ = 0;
   uint32_t lastHeartbeatTxMs_ = 0;
   uint32_t lastHeartbeatRxMs_ = 0;
+  uint32_t lastStatusRxMs_ = 0;
   bool heartbeatSeen_ = false;
   bool hasStatus_ = false;
   uint8_t controllerState_ = kiln::STATE_BOOT;

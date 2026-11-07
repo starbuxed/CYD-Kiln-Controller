@@ -12,7 +12,7 @@ Build a ceramic kiln controller around a CYD ESP32 touchscreen/operator interfac
 - Dedicated ESP32-S3 owns temperature acquisition, zone control, output commands, firing state, and all real-time safety decisions.
 - The CYD must never directly energize heater-control outputs or bypass the S3 supervisory state machine.
 - The S3 must continue local safety supervision independently of the CYD, Wi-Fi, and browser.
-- Shared protocol definitions belong in `shared/protocol/`; the active inter-controller link is CYD-to-S3 UART.
+- Shared protocol definitions belong in `shared/protocol/`; the active inter-controller link is CYD-to-S3 CAN 2.0A using an external transceiver on each board. The main and secondary boards each have a separate master-power permit relay output; their normally-open contacts are wired in series so both must energize for the main contactor control path to be permitted.
 
 ## Non-negotiable safety constraints
 
@@ -20,7 +20,7 @@ Build a ceramic kiln controller around a CYD ESP32 touchscreen/operator interfac
 - Never create a raw network-to-GPIO or browser-to-relay control path.
 - All local and remote commands must pass through the same S3 supervisory state machine and validation.
 - Outputs must default to their documented safe state at boot/reset/brownout/watchdog timeout/communications loss.
-- Loss of the CYD-to-S3 communications link during a firing must de-energize controlled outputs and latch/report a fault.
+- Loss of the CYD-to-S3 CAN link during a firing must de-energize controlled outputs and latch/report a fault.
 - Never automatically resume or replay start/resume/output commands after reset or reconnection.
 - Invalid, stale, disconnected, or implausible temperature readings are faults, not zero-valued temperatures.
 - Every enabled temperature sensor participates in kiln-wide safety supervision, independent of zone assignment or PID use. Only explicitly Off sensors are excluded.
@@ -38,7 +38,7 @@ Do not guess these values. Introduce board-specific configuration layers and lea
 
 1. Implement portable, host-testable logic first: protocol parser, profile validation, state machine, fault model, and simulation.
 2. Keep CYD operator-interface responsibilities separate from S3 real-time control responsibilities according to `docs/ARCHITECTURE.md`.
-3. Use a versioned UART frame with length, sequence number, and CRC. Reject malformed, stale, duplicate, and unsupported messages.
+3. Use the shared CAN transport and versioned CRC-protected protocol. Reject malformed, stale, duplicate, out-of-order, and unsupported messages. Verify CAN pins and physical transceivers before enabling transport.
 4. Keep protocol constants and schemas in `shared/`; avoid duplicated magic numbers.
 5. Make configuration and profile storage versioned and validate both on load and before firing.
 6. Keep web assets local to the CYD. The browser must not need a CDN or internet connection.
