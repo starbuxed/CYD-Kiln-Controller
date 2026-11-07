@@ -91,6 +91,7 @@ class CanStream {
 
  private:
   static constexpr uint16_t RX_QUEUE_SIZE = 256;
+  static constexpr uint8_t RX_STREAM_COUNT = 16;
 
   uint16_t identifierFor(uint8_t type) const {
     if (role_ == CAN_ROLE_MAIN) {
@@ -118,6 +119,18 @@ class CanStream {
     }
   }
 
+  int receiveSlot(uint16_t canId) {
+    for (uint8_t i = 0; i < RX_STREAM_COUNT; ++i)
+      if (rxIds_[i] == canId) return i;
+    for (uint8_t i = 0; i < RX_STREAM_COUNT; ++i) {
+      if (rxIds_[i] == 0) {
+        rxIds_[i] = canId;
+        return i;
+      }
+    }
+    return -1;
+  }
+
   void pollReceive() {
     if (!started_) return;
     twai_message_t message = {};
@@ -125,12 +138,14 @@ class CanStream {
       if (message.extd || message.rtr || message.data_length_code < 2 ||
           message.data_length_code > canwire::MAX_CAN_DLC) continue;
 
+      const int slot = receiveSlot(static_cast<uint16_t>(message.identifier));
+      if (slot < 0) continue;
       uint8_t completed[canwire::MAX_REASSEMBLED_BYTES] = {};
       size_t completedLength = 0;
-      if (reassembler_.accept(static_cast<uint16_t>(message.identifier),
-                              message.data, message.data_length_code,
-                              millis(), completed, sizeof(completed),
-                              completedLength)) {
+      if (reassemblers_[slot].accept(static_cast<uint16_t>(message.identifier),
+                                     message.data, message.data_length_code,
+                                     millis(), completed, sizeof(completed),
+                                     completedLength)) {
         if (completedLength > (RX_QUEUE_SIZE - rxCount_)) continue;
         for (size_t i = 0; i < completedLength; ++i) {
           rxQueue_[rxHead_] = completed[i];
@@ -143,7 +158,8 @@ class CanStream {
 
   CanNodeRole role_;
   bool started_ = false;
-  canwire::Reassembler reassembler_;
+  uint16_t rxIds_[RX_STREAM_COUNT] = {};
+  canwire::Reassembler reassemblers_[RX_STREAM_COUNT];
   uint8_t rxQueue_[RX_QUEUE_SIZE] = {};
   uint16_t rxHead_ = 0;
   uint16_t rxTail_ = 0;
