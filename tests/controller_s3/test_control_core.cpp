@@ -62,5 +62,25 @@ int main() {
   core.update(1000, temps, 0x0F, false);
   assert(core.faulted());
   assert(core.outputMask() == 0);
+
+  KilnControlCore soakCore;
+  RampSoakSegment soakProfile[] = {{100.0f, 100.0f, 600}};
+  assert(soakCore.configureProfile(soakProfile, 1));
+  for (uint8_t i = 0; i < 4; ++i) {
+    ZoneRuntimeConfig cfg = {{5.0f, 1000UL, 1000UL}, 0.0f};
+    assert(soakCore.configureZone(i, cfg));
+  }
+  float coldTemps[4] = {20, 20, 20, 20};
+  assert(soakCore.start(0, coldTemps, 0x0F, true));
+  float nearTemps[4] = {90, 90, 90, 80};
+  soakCore.update(3000000UL, nearTemps, 0x0F, true);
+  assert(soakCore.profileState() == PROFILE_WAITING);
+  float targetTemps[4] = {100, 100, 100, 100};
+  soakCore.update(3100000UL, targetTemps, 0x0F, true);
+  assert(soakCore.profileState() == PROFILE_SOAKING);
+  soakCore.update(3700000UL, targetTemps, 0x0F, true);
+  assert(soakCore.profileState() == PROFILE_COMPLETE);
+  assert(!soakCore.running());
+  assert(soakCore.outputMask() == 0);
   return 0;
 }
