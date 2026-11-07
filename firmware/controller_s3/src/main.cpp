@@ -1,78 +1,68 @@
 #include <Arduino.h>
 #include "relay_outputs.h"
+#include "controller_link.h"
 
-// Dedicated four-zone controller bring-up.
-// Physical GPIO assignments remain intentionally unset until the exact
-// ESP32-S3 board revision and external relay interface are confirmed.
+// Dedicated ESP32-S3 control processor. Pin assignments intentionally remain
+// unset until the exact board revision and external output interface are known.
 
 static constexpr uint8_t SENSOR_CHANNEL_COUNT = 4;
 static constexpr uint8_t HEATER_ZONE_COUNT = 4;
 
-enum class ControllerState : uint8_t {
-  BOOT,
-  SELF_TEST,
-  IDLE,
-  VALIDATING,
-  ARMED,
-  FIRING,
-  STOPPING,
-  COMPLETE,
-  FAULT
-};
+// UART pins are build-time configurable and deliberately not guessed.
+#ifndef KILN_S3_UART_RX_PIN
+#define KILN_S3_UART_RX_PIN -1
+#endif
+#ifndef KILN_S3_UART_TX_PIN
+#define KILN_S3_UART_TX_PIN -1
+#endif
 
-static ControllerState controllerState = ControllerState::BOOT;
-static kiln::RelayOutputs relayOutputs;
+kiln::RelayOutputs relayOutputs;
+kiln::ControllerState controllerState = kiln::STATE_BOOT;
+static ControllerLink controllerLink;
+static HardwareSerial controllerSerial(1);
 
 static const kiln::RelayOutputConfig outputConfig[kiln::RELAY_OUTPUT_COUNT] = {
-  {-1, true, false}, // Output 1: pin unassigned, active-high, disabled
-  {-1, true, false}, // Output 2: pin unassigned, active-high, disabled
-  {-1, true, false}, // Output 3: pin unassigned, active-high, disabled
-  {-1, true, false}  // Output 4: pin unassigned, active-high, disabled
+  {-1, true, false},
+  {-1, true, false},
+  {-1, true, false},
+  {-1, true, false}
 };
-
-static void forceAllHeaterRequestsInactive() {
-  relayOutputs.allInactive();
-}
-
-static void enterLatchedFault(const char* reason) {
-  forceAllHeaterRequestsInactive();
-  controllerState = ControllerState::FAULT;
-  Serial.printf("LATCHED FAULT: %s\n", reason);
-}
 
 void setup() {
   Serial.begin(115200);
   delay(200);
 
-  // Initialize outputs before any other controller activity. Unassigned
-  // channels remain unavailable and no output can be energized at startup.
+  controllerState = kiln::STATE_SELF_TEST;
   const bool outputsReady = relayOutputs.begin(outputConfig);
-  forceAllHeaterRequestsInactive();
-
-  controllerState = ControllerState::SELF_TEST;
+  relayOutputs.allInactive();
 
   Serial.println();
-  Serial.println("CYD Kiln Controller - dedicated ESP32-S3");
-  Serial.printf("Sensor channels: %u\n", SENSOR_CHANNEL_COUNT);
-  Serial.printf("Independent heater zones: %u\n", HEATER_ZONE_COUNT);
+  Serial.println("Kiln Controller - ESP32-S3");
+  Serial.printf("Temperature channels: %u\n", SENSOR_CHANNEL_COUNT);
+  Serial.printf("Independent zones: %u\n", HEATER_ZONE_COUNT);
   Serial.printf("Relay output channels: %u\n", kiln::RELAY_OUTPUT_COUNT);
   Serial.printf("Output configuration valid: %s\n", outputsReady ? "yes" : "no");
-  Serial.printf("Configured output channels: %u\n", relayOutputs.configuredCount());
-  Serial.println("Physical GPIO assignments are intentionally unset.");
-  Serial.println("No live heater control is enabled.");
+  Serial.println("Sensor acquisition is not yet integrated.");
+  Serial.println("Start and resume commands are intentionally blocked.");
 
-  // Remain non-firing until sensors, safety supervision, communications,
-  // and verified physical output interfaces are implemented and tested.
   if (!outputsReady) {
-    enterLatchedFault("Relay output configuration invalid");
+    controllerState = kiln::STATE_FAULT;
     return;
   }
-  controllerState = ControllerState::IDLE;
+
+#if KILN_S3_UART_RX_PIN >= 0 && KILN_S3_UART_TX_PIN >= 0
+  controllerLink.begin(controllerSerial, KILN_S3_UART_RX_PIN,
+                       KILN_S3_UART_TX_PIN, 115200);
+#else
+  Serial.println("S3 UART pins not configured; communications disabled.");
+#endif
+
+  controllerState = kiln::STATE_IDLE;
 }
 
 void loop() {
-  // No firing or output-energizing path is enabled in this bring-up stage.
-  // Later stages add sensor acquisition, local zone control, protocol,
-  // watchdog supervision, and explicit start/stop state transitions.
-  delay(10);
+#if KILN_S3_UART_RX_PIN >= 0 && KILN_S3_UART_TX_PIN >= 0
+  controllerLink.update();
+#endif
+  delay(2);
 }
