@@ -84,8 +84,7 @@ class CanStream {
     if (!started_) return false;
     twai_status_info_t status = {};
     if (twai_get_status_info(&status) != ESP_OK) return false;
-    return status.state == TWAI_STATE_RUNNING &&
-           status.bus_error_count < 32;
+    return status.state == TWAI_STATE_RUNNING;
   }
 
   bool started() const { return started_; }
