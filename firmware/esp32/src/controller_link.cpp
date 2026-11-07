@@ -41,6 +41,59 @@ bool ControllerLink::requestStatus() {
   return true;
 }
 
+bool ControllerLink::beginProfileConfig(uint8_t count) {
+  if (!connected() || count == 0 || count > kiln::MAX_PAYLOAD) return false;
+  sendFrame(kiln::MSG_PROFILE_BEGIN, &count, 1);
+  return true;
+}
+bool ControllerLink::sendProfileSegment(uint8_t index, int16_t targetDeciC,
+                                        int16_t rampDeciCPerHour,
+                                        uint32_t holdSeconds) {
+  if (!connected()) return false;
+  uint8_t payload[9];
+  payload[0] = index;
+  kiln::putI16(payload + 1, targetDeciC);
+  kiln::putI16(payload + 3, rampDeciCPerHour);
+  kiln::putU32(payload + 5, holdSeconds);
+  sendFrame(kiln::MSG_PROFILE_SEGMENT, payload, sizeof(payload));
+  return true;
+}
+bool ControllerLink::commitProfileConfig() {
+  if (!connected()) return false;
+  sendFrame(kiln::MSG_PROFILE_COMMIT, nullptr, 0);
+  return true;
+}
+bool ControllerLink::configureZone(uint8_t zone, int16_t hysteresisDeciC,
+                                   uint32_t minimumOnMs, uint32_t minimumOffMs,
+                                   int16_t offsetDeciC) {
+  if (!connected() || zone >= 4) return false;
+  uint8_t payload[13];
+  payload[0] = zone;
+  kiln::putI16(payload + 1, hysteresisDeciC);
+  kiln::putU32(payload + 3, minimumOnMs);
+  kiln::putU32(payload + 7, minimumOffMs);
+  kiln::putI16(payload + 11, offsetDeciC);
+  sendFrame(kiln::MSG_ZONE_CONFIG, payload, sizeof(payload));
+  return true;
+}
+bool ControllerLink::configureSensor(uint8_t channel, uint8_t type,
+                                     int16_t offsetDeciC) {
+  if (!connected() || channel >= 4 || type > 7) return false;
+  uint8_t payload[4];
+  payload[0] = channel;
+  payload[1] = type;
+  kiln::putI16(payload + 2, offsetDeciC);
+  sendFrame(kiln::MSG_SENSOR_CONFIG, payload, sizeof(payload));
+  return true;
+}
+bool ControllerLink::configureSafetyLimit(int16_t maximumDeciC) {
+  if (!connected()) return false;
+  uint8_t payload[2];
+  kiln::putI16(payload, maximumDeciC);
+  sendFrame(kiln::MSG_SAFETY_CONFIG, payload, sizeof(payload));
+  return true;
+}
+
 void ControllerLink::handleFrame(const kiln::Frame& frame) {
   if (frame.version != kiln::PROTOCOL_VERSION) return;
   if (frame.type == kiln::MSG_HEARTBEAT) {
