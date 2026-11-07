@@ -39,7 +39,7 @@ The current assumption is that "mixed" means different thermocouple types can be
 - `sample_interval_ms` and `stale_after_ms`.
 - `zone_id`: zone controlled by this sensor; one-to-one mapping is the initial default.
 
-A MAX31856 is a thermocouple-to-digital converter, not an RTD interface. It is a candidate for each thermocouple channel because it supports multiple thermocouple types. Confirm the exact module's electrical design, cold-junction placement, isolation, wiring connector, noise immunity, and usable temperature range. Do not assume a low-cost breakout board provides galvanic isolation.
+A MAX31856 SPI driver is now included in the firmware using Adafruit's library. It is a thermocouple-to-digital converter, not an RTD interface. Each channel can be configured independently for K/J/N/R/S/T/E/B. The driver is present, but SPI and chip-select pins default to disabled. Configure build macros `KILN_TC_SPI_SCLK`, `KILN_TC_SPI_MISO`, `KILN_TC_SPI_MOSI`, and `KILN_TC1_CS_PIN` through `KILN_TC4_CS_PIN` only after verifying the selected S3 board pinout. Confirm each module's electrical design, cold-junction placement, isolation, connector, noise immunity, and usable temperature range. Do not assume a low-cost breakout board provides galvanic isolation.
 
 If any channel is to use an RTD (PT100/PT1000), it needs an RTD-capable front end, such as a MAX31865-class interface. Do not connect an RTD to a MAX31856.
 
@@ -77,6 +77,7 @@ The ESP32-S3 firmware will force its four control requests inactive on boot, res
 - [ ] Select exact ESP32-S3 board/module and verify pinout.
 - [ ] Identify each probe type, temperature range, construction, and location.
 - [ ] Select and verify one compatible sensor front end per channel.
+- [ ] Assign and verify the MAX31856 SPI bus and each enabled chip-select pin.
 - [ ] Decide whether any channel uses RTD rather than thermocouple.
 - [ ] Define zone-to-sensor and zone-to-output mapping.
 - [ ] Select external relay/SSR modules (user responsibility).
