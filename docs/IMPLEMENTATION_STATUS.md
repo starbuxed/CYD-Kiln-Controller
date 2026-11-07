@@ -13,11 +13,11 @@
 - S3 UART server with heartbeat, status snapshots, command validation, acknowledgements, stale-sequence rejection, and safe STOP/PAUSE handling.
 - Kiln telemetry uses signed deci-degrees Celsius so the protocol can represent normal ceramic-kiln temperatures.
 - Four-channel relay output abstraction with active-high/active-low polarity, disabled/unassigned handling, and inactive startup.
-- Hardware-independent ramp/soak profile engine with bounded profile validation, ramp interpolation, soak timing, pause/resume, and completion.
+- Hardware-independent ramp/soak profile engine with bounded profile validation, ramp interpolation, measured-temperature arrival wait before soak timing, pause/resume, and completion.
 - Four independent hysteresis zone controllers with configurable deadband and minimum on/off dwell.
 - Four-channel sensor manager with per-channel thermocouple type selection (K/J/N/R/S/T/E/B), range checks, sample freshness, driver-fault handling, and implausible-rate detection.
 - Local latched safety manager for sensor loss, sensor range, overtemperature, and host-link faults.
-- Four-zone control core coordinating profile execution, independent zone control, and fail-safe output masks.
+- Four-zone control core coordinating profile execution, waiting for all four measured zones to reach target before starting soak timers, independent zone control, and fail-safe output masks.
 - S3 status telemetry reports sensor-valid bits and latched control-core fault flags.
 - Portable host test sources and a reproducible native C++ test script; GitHub Actions runs the portable tests on pushes and pull requests.
 - CYD build source filter excludes the obsolete Pro Micro transport from the current S3 architecture.
