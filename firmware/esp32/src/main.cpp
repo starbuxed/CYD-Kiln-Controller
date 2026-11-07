@@ -80,7 +80,7 @@ void loop() {
 #endif
 #if KILN_CAN_PINMAP_AVAILABLE
   const bool mainPermit = controllerLink.connected() &&
-      controllerLink.hasStatus() &&
+      controllerLink.statusFresh() &&
       controllerLink.controllerState() == kiln::STATE_FIRING &&
       controllerLink.faultFlags() == 0;
 #else
