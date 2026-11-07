@@ -1,29 +1,34 @@
 # Firmware Implementation Status
 
-## Increment 1: board selection and serial bring-up
+## Increment 1: CYD selection and Pro Micro serial heartbeat
 
 Added:
-- PlatformIO environment for the common 2.8-inch ILI9341/XPT2046 CYD.
-- Alternate PlatformIO environment for the 2.8-inch ST7789/XPT2046 revision.
-- Compile-time board profile selector and a catalog of common CYD family variants.
-- Explicit compile-time rejection for unverified 2.4-inch, 2.8-inch capacitive, 3.2-inch, 3.5-inch, and Guition profiles.
-- ESP32 UART2 initialization using the selected board profile's proposed UART pins.
-- Pro Micro 5V/16MHz and 3.3V/8MHz PlatformIO environments.
-- Shared protocol constants and CRC16-CCITT helper.
-- Pro Micro safe-output/watchdog bring-up skeleton with no guessed output pins.
+- PlatformIO build profiles for classic 2.8-inch ILI9341/XPT2046 and ST7789/XPT2046 variants.
+- Catalogue profiles for 2.4-inch, 2.8-inch capacitive, 3.2-inch, 3.5-inch resistive/capacitive, and ESP32-S3 4.3/7-inch CYD families.
+- Compile-time profile selection using `KILN_BOARD_PROFILE`.
+- Classic 2.8-inch reference display/touch pin map and proposed UART2 pins GPIO22/GPIO27.
+- UART is disabled for other profiles until a board-specific UART pin map is verified.
+- Shared framed UART protocol with SOF, version, message type, sequence, payload length, and CRC16-CCITT.
+- ESP32 heartbeat sender and Pro Micro heartbeat receiver/status reporting.
+- Pro Micro safe-output startup and communications-timeout handling.
+- Host-side protocol round-trip and CRC-corruption test source.
 
-Not implemented yet:
-- Complete UART frame encoder/parser and ACK/retry behavior.
-- Sensor drivers and four-channel telemetry.
-- Relay driver pins or physical output switching.
-- ESP32 display/touch driver integration and UI.
-- Profile engine, web server, authentication, and history.
-- Hardware-in-the-loop testing.
+## Current limitations
 
-## Safety limitation
+- The ESP32 firmware currently reports the board profile and maintains a Pro Micro heartbeat link; it does not yet initialize the display/touch hardware.
+- No remote output-control command is issued by the ESP32.
+- Pro Micro output pins remain unconfigured (`-1`) by design. No relay can be driven.
+- Sensor drivers and four-channel telemetry are not implemented.
+- Board profiles outside the classic 2.8-inch reference are catalogue/build-selection entries only; their GPIO maps and display/touch initialization are not validated.
+- The 2.8-inch ST7789 profile shares the common classic CYD pin layout but panel color order/inversion and exact revision still require physical confirmation.
+- No authentication, web server, firing-profile engine, or firing history is implemented yet.
 
-The Pro Micro `forceSafeOutputs()` function is intentionally a placeholder because output pin numbers, driver topology, active polarity, and actual safe states are not known. This firmware increment does not control a kiln and must not be connected to energized kiln outputs.
+## Safety limitations
 
-## Build validation
+This is a bring-up scaffold, not a kiln controller ready for operation. Do not connect it to energized kiln outputs. The Pro Micro output mapping remains disabled until the exact board, driver topology, active polarity, and independent safety chain are documented and tested.
 
-No PlatformIO compile or physical hardware test has been run as part of this repository update. Treat the code as an initial scaffold until it is built with the selected toolchain and tested with the exact board revisions.
+A valid serial heartbeat only indicates that the Pro Micro is responding. It does not prove sensor health, relay state, contactor state, or kiln safety.
+
+## Validation status
+
+No PlatformIO build or physical hardware test has been run as part of this increment. The protocol test source is present but has not yet been executed against the repository toolchain. Build both MCU targets and run protocol tests before connecting hardware.
