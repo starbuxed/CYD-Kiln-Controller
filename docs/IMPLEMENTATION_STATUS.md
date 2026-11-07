@@ -18,7 +18,7 @@
 - Four-channel sensor manager with per-channel thermocouple type selection (K/J/N/R/S/T/E/B), range checks, sample freshness, driver-fault handling, implausible-rate detection, and four explicit operating modes: Off, Log only, Log and control, and Log and safety.
 - Per-sensor mode masks distinguish acquisition/monitoring, PID eligibility, and safety supervision. Newly configured sensors default to Log and safety; changing modes invalidates the old sample until a fresh reading arrives.
 - Per-sensor operating modes are configurable over UART and reported to the CYD in the 29-byte status payload.
-- The firing core requires all four one-to-one zone inputs to be valid and in Log and control mode. The local safety manager checks both Log and control and Log and safety sensors for sensor-loss and overtemperature trips; Log only sensors are acquired and logged but do not independently trip kiln safety.
+- The firing core requires all four one-to-one zone inputs to be valid and in Log and control mode. The local safety manager combines every enabled sensor (Log only, Log and control, and Log and safety) into one kiln-wide safety check: any sensor reaching the limit or losing a valid reading trips the kiln. Off is the only mode excluded from safety.
 - Local latched safety manager for sensor loss, sensor range, overtemperature, and host-link faults.
 - Four-zone control core coordinating profile execution, waiting for all four measured zones to reach target before starting soak timers, independent zone control, and fail-safe output masks.
 - S3 status telemetry reports sensor-valid bits and latched control-core fault flags.
