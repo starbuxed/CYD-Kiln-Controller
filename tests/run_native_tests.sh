@@ -29,4 +29,10 @@ $CXX $COMMON $INCLUDES \
   -o "$BUILD_DIR/test_sensor_manager"
 "$BUILD_DIR/test_sensor_manager"
 
+$CXX $COMMON $INCLUDES \
+  "$ROOT/tests/controller_s3/test_zone_mapping.cpp" \
+  "$ROOT/firmware/controller_s3/src/zone_mapping.cpp" \
+  -o "$BUILD_DIR/test_zone_mapping"
+"$BUILD_DIR/test_zone_mapping"
+
 printf '%s\n' "All native kiln controller tests passed."
