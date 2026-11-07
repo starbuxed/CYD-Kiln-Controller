@@ -190,3 +190,8 @@ void ControllerLink::update() {
     controllerState = kiln::STATE_FAULT;
   }
 }
+
+bool ControllerLink::hostLinkHealthy() const {
+  return hostHeartbeatSeen_ &&
+         static_cast<uint32_t>(millis() - lastHostHeartbeatMs_) <= HOST_TIMEOUT_MS;
+}
