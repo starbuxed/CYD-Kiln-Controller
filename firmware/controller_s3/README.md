@@ -17,7 +17,7 @@ This firmware target is the local control processor. The CYD ESP32 is the operat
 - `profile_engine.*`: bounded ramp/soak profile validation, ramp interpolation, soak timing, pause/resume, and completion.
 - `zone_controller.*`: four independent hysteresis controllers with configurable deadband and minimum on/off dwell.
 - `sensor_manager.*`: per-channel thermocouple type selection, calibration offsets, reading validation, stale-data detection, range checking, rate plausibility checks, and Off / Log only / Log and control / Log and safety operating modes.
-- `controller_link.*`: per-sensor operating-mode configuration over UART and per-sensor mode telemetry to the CYD. Log and safety sensors are checked independently of PID; only Log and control sensors are eligible for the current one-to-one zone PID inputs.
+- `controller_link.*`: per-sensor operating-mode configuration over UART and per-sensor mode telemetry to the CYD. Log and control sensors are checked for safety and are eligible for PID; Log and safety sensors are checked for safety but never used for PID.
 - `max31856_array.*`: four-chip SPI front end using the Adafruit MAX31856 library, with independent thermocouple type configuration and per-channel fault mapping.
 - `safety_manager.*`: latched sensor-loss, sensor-range, overtemperature, and host-link faults.
 - `kiln_control_core.*`: coordinates the profile, four zones, and fail-safe logical output states.
