@@ -114,6 +114,8 @@ void loop() {
       controllerState == kiln::STATE_PAUSED) {
     controlCore.update(millis(), kilnTemperaturesC,
                        sensorManager.validMask(),
+                       sensorManager.controlEnabledMask(),
+                       sensorManager.safetyEnabledMask(),
 #if KILN_S3_UART_RX_PIN >= 0 && KILN_S3_UART_TX_PIN >= 0
                        controllerLink.hostLinkHealthy()
 #else
