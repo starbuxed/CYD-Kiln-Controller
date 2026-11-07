@@ -53,11 +53,11 @@ void ControllerLink::sendHeartbeat() {
 }
 
 void ControllerLink::sendStatus() {
-  // Fixed v1 status payload (21 bytes):
+  // Fixed v1 status payload (25 bytes):
   // state, fault flags u16, sensor-valid mask, output-command mask,
   // 4 temperatures in deci-degrees C, 4 setpoints in deci-degrees C.
   // Until sensor drivers are integrated, readings are marked invalid.
-  uint8_t payload[21] = {};
+  uint8_t payload[25] = {};
   payload[0] = static_cast<uint8_t>(controllerState);
   const uint16_t faults = controlCore.faults();
   payload[1] = static_cast<uint8_t>(faults & 0xFF);
@@ -74,6 +74,7 @@ void ControllerLink::sendStatus() {
     const int16_t setpoint = static_cast<int16_t>(controlCore.setpointC(i) * 10.0f);
     kiln::putI16(payload + 5 + (i * 2), temp);
     kiln::putI16(payload + 13 + (i * 2), setpoint);
+    payload[21 + i] = static_cast<uint8_t>(sensorManager.fault(i));
   }
   sendFrame(kiln::MSG_STATUS, txSequence_++, payload, sizeof(payload));
 }
