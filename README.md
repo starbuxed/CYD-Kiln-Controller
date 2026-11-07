@@ -1,58 +1,60 @@
 # CYD Kiln Controller
 
-A locally hosted, touchscreen-operated ceramic kiln controller with a CYD ESP32 operator interface and a dedicated ESP32-S3 kiln-control processor.
+A locally hosted ceramic kiln controller with a CYD ESP32 operator interface and a dedicated ESP32-S3 control processor.
 
-The CYD provides the touchscreen, Wi-Fi, local web application, profile editing, charts, and history. A separate ESP32-S3 is the local control authority for four temperature channels and four independently controlled heater zones. The Pro Micro is no longer the planned I/O controller. The design assumes mixed thermocouple types configurable per channel; RTD channels require a different sensor front end.
+The CYD provides the touchscreen, Wi-Fi, local web application, profile editing, charts, and history. The dedicated ESP32-S3 reads four temperature channels and operates four independent digital ON/OFF control outputs. The user selects and supplies the external relay/SSR/power-switching equipment; this project focuses on temperature control and four compatible low-voltage relay-control signals.
 
-> **Safety notice:** This repository is a development project, not a certified kiln controller. Kiln installations involve lethal voltage, high current, extreme temperatures, fire risk, and potentially hazardous failure modes. Software and ordinary microcontroller boards are not substitutes for correctly rated contactors, independent over-temperature protection, fusing, grounding, enclosure design, and code-compliant installation. Have the power system designed and inspected by a qualified professional. Never test initial firmware with heating elements connected.
+The design assumes mixed thermocouple types configurable per channel. RTD channels require a different sensor front end.
+
+> **Safety notice:** This is a development project, not a certified kiln controller. The ESP32 GPIOs must not directly drive bare relay coils or heater loads. Use a compatible protected/isolated interface for the external relay modules. Independent kiln-side over-temperature and power protection remain necessary. Never test initial firmware with heating elements connected.
 
 ## Project goals
 
-- CYD ESP32 touchscreen and self-hosted browser interface.
-- Dedicated ESP32-S3 local kiln controller.
-- Four individually configurable temperature channels.
+- CYD touchscreen and self-hosted browser interface.
+- Dedicated ESP32-S3 local control processor.
+- Four independently configurable temperature channels.
 - Mixed thermocouple types selectable per channel.
-- Four independently controlled heater circuits/zones.
-- Four independent local control loops with zone limits and fault monitoring.
-- Ramp/soak firing profiles and history.
+- Four independent zone-control loops.
+- Four digital ON/OFF relay-control outputs with configurable polarity.
+- Ramp/soak firing profiles, alarms, and history.
 - Local operation without cloud hosting or subscriptions.
-- Explicit fault handling, communication watchdogs, and safe output defaults.
-- No automatic firing restart after reset, fault, or communication outage.
+- Safe inactive outputs on boot, reset, communications loss, and critical faults.
+- No automatic firing restart after interruption.
 
-## Architecture at a glance
+## Architecture
 
-- **CYD ESP32:** touchscreen, web server, Wi-Fi, profile editor, configuration, history, and operator commands.
-- **Dedicated ESP32-S3:** four sensor front ends, four zone-control loops, four isolated low-voltage output requests, local safety supervision, and communication with the CYD.
-- **Independent safety hardware:** high-limit protection and appropriately rated final power switching must remain effective without either microcontroller or the network.
+- **CYD ESP32:** touchscreen, web server, Wi-Fi, profiles, configuration, history, and operator commands.
+- **Dedicated ESP32-S3:** four sensor channels, four control loops, four digital output commands, and local fault supervision.
+- **External relay/SSR hardware:** selected and supplied by the user. The controller only issues low-voltage ON/OFF commands through compatible interface circuitry.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/HARDWARE.md](docs/HARDWARE.md), [docs/SAFETY.md](docs/SAFETY.md), [docs/PROTOCOL.md](docs/PROTOCOL.md), and [docs/CYD_BOARD_SELECTION.md](docs/CYD_BOARD_SELECTION.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/HARDWARE.md](docs/HARDWARE.md), [docs/SAFETY.md](docs/SAFETY.md), and [docs/PROTOCOL.md](docs/PROTOCOL.md).
 
 ## Repository layout
 
 - `firmware/esp32/` — CYD operator-interface firmware.
-- `firmware/promicro/` — legacy Pro Micro prototype; not the target control architecture.
-- `firmware/controller_s3/` — dedicated ESP32-S3 controller firmware (planned).
-- `web/` — browser application assets served by the CYD.
-- `shared/` — protocol definitions and shared schemas.
+- `firmware/controller_s3/` — dedicated ESP32-S3 controller firmware.
+- `firmware/promicro/` — legacy Pro Micro prototype.
+- `web/` — browser application served by the CYD.
+- `shared/` — protocol definitions and schemas.
 - `docs/` — architecture, safety, hardware, and API documentation.
 - `profiles/` — example firing profiles.
-- `tests/` — protocol, profile-validation, and state-machine tests.
+- `tests/` — protocol and control tests.
 
 ## Current status
 
-The repository contains initial CYD board-selection and serial-protocol scaffolding. The four-zone ESP32-S3 architecture is now the target design, but the dedicated controller firmware, sensor acquisition, PID loops, output drivers, web app, and hardware safety chain are not yet implemented or validated. The kiln supply is unknown, so no mains power components, SSR ratings, contactor ratings, fuses, or wire sizes have been selected.
+The repository contains initial board-selection, protocol, and ESP32-S3 startup scaffolding. Four-channel sensor acquisition, control loops, physical output-interface drivers, web app, and firing history remain to be implemented and validated. The firmware can be developed against generic ON/OFF outputs; external relay-module compatibility must be confirmed before connecting that hardware.
 
 ## Development principles
 
-1. Keep the local safety path independent of Wi-Fi and browser behavior.
+1. Keep local control and fault handling independent of Wi-Fi/browser behavior.
 2. Reject invalid, stale, wrong-type, or out-of-range sensor data.
-3. Treat communications loss as a fault; outputs must move to their defined safe state.
+3. Force all four digital outputs inactive on critical faults.
 4. Never replay a queued start/resume command after reconnection.
-5. Validate all four zone configurations and profiles before firing.
-6. Log faults, state transitions, and operator commands.
+5. Validate all four zone configurations before firing.
+6. Distinguish commanded output state from verified physical state.
 7. Keep hazardous power switching outside low-voltage logic circuitry.
-8. Preserve independent hardware high-limit and final power disconnect.
+8. Do not automatically resume after reset or interruption.
 
 ## License
 
-No license has been selected yet. Do not assume this project is open for reuse until a license is added.
+No license has been selected yet.
