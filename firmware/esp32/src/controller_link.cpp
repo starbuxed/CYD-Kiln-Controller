@@ -12,8 +12,6 @@ void ControllerLink::begin(HardwareSerial& serial, int8_t rxPin, int8_t txPin,
   lastHeartbeatRxMs_ = 0;
   heartbeatSeen_ = false;
   hasStatus_ = false;
-
-  // Begin with protocol hello; the S3 responds with heartbeat and status.
   const uint8_t hello[1] = {kiln::PROTOCOL_VERSION};
   sendFrame(kiln::MSG_HELLO, hello, sizeof(hello));
 }
@@ -45,7 +43,6 @@ bool ControllerLink::requestStatus() {
 
 void ControllerLink::handleFrame(const kiln::Frame& frame) {
   if (frame.version != kiln::PROTOCOL_VERSION) return;
-
   if (frame.type == kiln::MSG_HEARTBEAT) {
     if (frame.length != 5) return;
     heartbeatSeen_ = true;
@@ -53,9 +50,10 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
     controllerState_ = frame.payload[4];
     return;
   }
-
   if (frame.type == kiln::MSG_STATUS) {
-    if (frame.length != 22) return;
+    // S3 status payload: state, fault flags(2), sensor mask, output mask,
+    // four temperatures and four setpoints, all signed centi-degrees.
+    if (frame.length != 21) return;
     controllerState_ = frame.payload[0];
     sensorValidMask_ = frame.payload[3];
     outputCommandMask_ = frame.payload[4];
@@ -66,9 +64,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
     hasStatus_ = true;
     return;
   }
-
-  if (frame.type == kiln::MSG_ACK) {
-    if (frame.length != 2) return;
+  if (frame.type == kiln::MSG_ACK && frame.length == 2) {
     lastAckCommand_ = frame.payload[0];
     lastAckResult_ = frame.payload[1];
   }
@@ -81,7 +77,6 @@ void ControllerLink::update() {
     kiln::Frame frame;
     if (parser_.feed(incoming, frame)) handleFrame(frame);
   }
-
   const uint32_t now = millis();
   if (static_cast<uint32_t>(now - lastHeartbeatTxMs_) >= HEARTBEAT_INTERVAL_MS) {
     lastHeartbeatTxMs_ = now;
@@ -95,16 +90,13 @@ bool ControllerLink::connected() const {
   return heartbeatSeen_ &&
          static_cast<uint32_t>(millis() - lastHeartbeatRxMs_) <= LINK_TIMEOUT_MS;
 }
-
 uint32_t ControllerLink::heartbeatAgeMs() const {
   if (!heartbeatSeen_) return UINT32_MAX;
   return static_cast<uint32_t>(millis() - lastHeartbeatRxMs_);
 }
-
 int16_t ControllerLink::temperatureCentiC(uint8_t channel) const {
   return channel < 4 ? temperatures_[channel] : 0;
 }
-
 int16_t ControllerLink::setpointCentiC(uint8_t channel) const {
   return channel < 4 ? setpoints_[channel] : 0;
 }
