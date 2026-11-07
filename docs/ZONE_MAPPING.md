@@ -9,13 +9,13 @@ Every physical sensor has one operating mode, selected independently of zone ass
 | Mode | Acquire/display | Log | PID/control eligible | Kiln safety trip |
 |---|---:|---:|---:|---:|
 | **Off** | No | No | No | No |
-| **Log only** | Yes | Yes | No | No |
+| **Log only** | Yes | Yes | No | Yes |
 | **Log and control** | Yes | Yes | Yes | Yes |
 | **Log and safety** | Yes | Yes | No | Yes |
 
-**Off is the only mode that disables monitoring.** Every other mode continues acquiring and logging the sensor's readings and faults.
+**Off is the only mode that disables monitoring and safety supervision.** Every other mode contributes to the kiln-wide safety check, regardless of zone assignment or PID use.
 
-A sensor in **Log and safety** mode is independently checked for sensor faults, stale readings, implausible readings, and overtemperature, regardless of whether it is assigned to a zone. A sensor in **Log and control** mode is eligible for PID only in zones where it is selected and remains independently checked for sensor faults, stale readings, implausible readings, and overtemperature. A sensor in **Log and safety** mode receives the same independent safety checks but is never used for PID.
+The safety check combines all enabled sensors using a worst-case rule: the highest valid temperature is the kiln safety temperature. If any enabled sensor reaches the configured limit, the kiln trips. A missing, stale, implausible, or electrically faulted enabled sensor also trips after the sensor-loss grace period. Safety is never averaged, because averaging could hide a hot spot.
 
 Newly configured sensors default to **Log and safety**. Changing a sensor mode invalidates its previous sample; a fresh valid sample is required before it can be used again.
 
