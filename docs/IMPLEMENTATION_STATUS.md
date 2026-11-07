@@ -44,7 +44,7 @@
 - All relay output pins remain disabled and unassigned in the current build.
 - Outputs are initialized inactive and commanded inactive on STOP, PAUSE, and latched faults.
 - Loss of the CYD heartbeat during a firing forces all outputs inactive and latches a host-link fault.
-- Fault acknowledgement requires all configured Log and safety sensors to be valid and below the configured safety limit, plus a healthy host link.
+- Fault acknowledgement requires all enabled sensors to be valid and below the configured safety limit, plus a healthy host link.
 - No automatic restart or resume after reset, brownout, sensor loss, or communication failure.
 
 ## Validation status
