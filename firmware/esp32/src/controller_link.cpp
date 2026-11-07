@@ -108,6 +108,8 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
     // four temperatures and four setpoints, all signed deci-degrees.
     if (frame.length != 21) return;
     controllerState_ = frame.payload[0];
+    faultFlags_ = static_cast<uint16_t>(frame.payload[1]) |
+                  (static_cast<uint16_t>(frame.payload[2]) << 8);
     sensorValidMask_ = frame.payload[3];
     outputCommandMask_ = frame.payload[4];
     for (uint8_t i = 0; i < 4; ++i) {
