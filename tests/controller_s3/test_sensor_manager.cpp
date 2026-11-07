@@ -44,6 +44,6 @@ int main() {
   assert(sensors.safetyEnabled(3));
   assert(sensors.monitoringMask() == 0x0E);
   assert(sensors.controlEnabledMask() == 0x04);
-  assert(sensors.safetyEnabledMask() == 0x0C);
+  assert(sensors.safetyEnabledMask() == 0x0E);
   return 0;
 }
