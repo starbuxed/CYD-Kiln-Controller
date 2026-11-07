@@ -52,7 +52,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
   }
   if (frame.type == kiln::MSG_STATUS) {
     // S3 status payload: state, fault flags(2), sensor mask, output mask,
-    // four temperatures and four setpoints, all signed centi-degrees.
+    // four temperatures and four setpoints, all signed deci-degrees.
     if (frame.length != 21) return;
     controllerState_ = frame.payload[0];
     sensorValidMask_ = frame.payload[3];
