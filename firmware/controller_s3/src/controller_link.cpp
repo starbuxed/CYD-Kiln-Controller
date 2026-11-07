@@ -53,7 +53,7 @@ void ControllerLink::sendHeartbeat() {
 void ControllerLink::sendStatus() {
   // Fixed v1 status payload (21 bytes):
   // state, fault flags u16, sensor-valid mask, output-command mask,
-  // 4 temperatures in centi-degrees C, 4 setpoints in centi-degrees C.
+  // 4 temperatures in deci-degrees C, 4 setpoints in deci-degrees C.
   // Until sensor drivers are integrated, readings are marked invalid.
   uint8_t payload[21] = {};
   payload[0] = static_cast<uint8_t>(controllerState);
@@ -67,8 +67,8 @@ void ControllerLink::sendStatus() {
   }
   payload[4] = outputMask;
   for (uint8_t i = 0; i < 4; ++i) {
-    const int16_t temp = static_cast<int16_t>(kilnTemperaturesC[i] * 100.0f);
-    const int16_t setpoint = static_cast<int16_t>(controlCore.setpointC(i) * 100.0f);
+    const int16_t temp = static_cast<int16_t>(kilnTemperaturesC[i] * 10.0f);
+    const int16_t setpoint = static_cast<int16_t>(controlCore.setpointC(i) * 10.0f);
     kiln::putI16(payload + 5 + (i * 2), temp);
     kiln::putI16(payload + 13 + (i * 2), setpoint);
   }
@@ -79,8 +79,8 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
   result = kiln::RESULT_INVALID_STATE;
   switch (command) {
     case kiln::CMD_START:
-      // Start remains deliberately blocked until profile validation,
-      // temperature acquisition, and safety interlocks are implemented.
+      // Start remains blocked until the real sensor adapter, profile transfer,
+      // output mapping, and end-to-end validation are integrated.
       result = (controllerState == kiln::STATE_FAULT)
                  ? kiln::RESULT_FAULT_LATCHED : kiln::RESULT_NOT_READY;
       break;
@@ -109,7 +109,7 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
     case kiln::CMD_ACK_FAULT:
       if (controllerState == kiln::STATE_FAULT) {
         result = controlCore.acknowledgeFault(kilnTemperaturesC,
-                    sensorManager.validMask(), hostHeartbeatSeen_)
+                    sensorManager.validMask(), hostLinkHealthy())
                    ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
         if (result == kiln::RESULT_OK) controllerState = kiln::STATE_IDLE;
       } else {
