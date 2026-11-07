@@ -8,6 +8,7 @@ SensorManager::SensorManager() {
     channels_[i].type = TC_K;
     channels_[i].reading = {0.0f, 0, SENSOR_NOT_CONFIGURED, false};
     channels_[i].configured = false;
+    channels_[i].mode = SENSOR_MODE_OFF;
     channels_[i].calibrationOffsetC = 0.0f;
     channels_[i].hasPrevious = false;
     channels_[i].previousC = 0.0f;
@@ -38,9 +39,54 @@ bool SensorManager::configure(uint8_t ch, ThermocoupleType t, float offsetC) {
   channels_[ch].reading.fault = SENSOR_NOT_CONFIGURED;
   return true;
 }
+bool SensorManager::setMode(uint8_t ch, SensorOperatingMode modeValue) {
+  if (ch >= TEMPERATURE_CHANNELS || modeValue > SENSOR_MODE_LOG_SAFETY)
+    return false;
+  Channel& c = channels_[ch];
+  c.mode = modeValue;
+  // Turning a channel off discards its current validity. Re-enabling it must
+  // wait for a fresh sample before it can be used for control or safety.
+  c.reading.valid = false;
+  c.reading.fault = c.configured ? SENSOR_STALE : SENSOR_NOT_CONFIGURED;
+  c.hasPrevious = false;
+  return true;
+}
+SensorOperatingMode SensorManager::mode(uint8_t ch) const {
+  return ch < TEMPERATURE_CHANNELS ? channels_[ch].mode : SENSOR_MODE_OFF;
+}
+bool SensorManager::monitoringEnabled(uint8_t ch) const {
+  return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
+         channels_[ch].mode != SENSOR_MODE_OFF;
+}
+bool SensorManager::controlEnabled(uint8_t ch) const {
+  return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
+         channels_[ch].mode == SENSOR_MODE_LOG_CONTROL;
+}
+bool SensorManager::safetyEnabled(uint8_t ch) const {
+  return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
+         channels_[ch].mode == SENSOR_MODE_LOG_SAFETY;
+}
+uint8_t SensorManager::monitoringMask() const {
+  uint8_t mask = 0;
+  for (uint8_t i = 0; i < TEMPERATURE_CHANNELS; ++i)
+    if (monitoringEnabled(i)) mask |= static_cast<uint8_t>(1u << i);
+  return mask;
+}
+uint8_t SensorManager::controlEnabledMask() const {
+  uint8_t mask = 0;
+  for (uint8_t i = 0; i < TEMPERATURE_CHANNELS; ++i)
+    if (controlEnabled(i)) mask |= static_cast<uint8_t>(1u << i);
+  return mask;
+}
+uint8_t SensorManager::safetyEnabledMask() const {
+  uint8_t mask = 0;
+  for (uint8_t i = 0; i < TEMPERATURE_CHANNELS; ++i)
+    if (safetyEnabled(i)) mask |= static_cast<uint8_t>(1u << i);
+  return mask;
+}
 bool SensorManager::submitSample(uint8_t ch, float temp,
                                  SensorFault driverFault, uint32_t nowMs) {
-  if (ch >= TEMPERATURE_CHANNELS || !channels_[ch].configured) return false;
+  if (ch >= TEMPERATURE_CHANNELS || !monitoringEnabled(ch)) return false;
   Channel& c = channels_[ch];
   c.reading.sampledAtMs = nowMs;
   c.reading.temperatureC = temp + c.calibrationOffsetC;
@@ -73,7 +119,7 @@ bool SensorManager::submitSample(uint8_t ch, float temp,
 void SensorManager::update(uint32_t nowMs) {
   for (uint8_t i = 0; i < TEMPERATURE_CHANNELS; ++i) {
     Channel& c = channels_[i];
-    if (!c.configured) continue;
+    if (!monitoringEnabled(i)) continue;
     if (static_cast<uint32_t>(nowMs - c.reading.sampledAtMs) > SENSOR_STALE_MS) {
       c.reading.valid = false;
       c.reading.fault = SENSOR_STALE;
@@ -84,7 +130,7 @@ bool SensorManager::configured(uint8_t ch) const {
   return ch < TEMPERATURE_CHANNELS && channels_[ch].configured;
 }
 bool SensorManager::valid(uint8_t ch) const {
-  return ch < TEMPERATURE_CHANNELS && channels_[ch].configured &&
+  return ch < TEMPERATURE_CHANNELS && monitoringEnabled(ch) &&
          channels_[ch].reading.valid;
 }
 uint8_t SensorManager::validMask() const {
