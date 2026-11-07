@@ -67,7 +67,8 @@ void ControllerLink::sendStatus() {
   }
   payload[4] = outputMask;
   for (uint8_t i = 0; i < 4; ++i) {
-    const int16_t temp = static_cast<int16_t>(kilnTemperaturesC[i] * 10.0f);
+    const float safeTemp = sensorManager.valid(i) ? kilnTemperaturesC[i] : 0.0f;
+    const int16_t temp = static_cast<int16_t>(safeTemp * 10.0f);
     const int16_t setpoint = static_cast<int16_t>(controlCore.setpointC(i) * 10.0f);
     kiln::putI16(payload + 5 + (i * 2), temp);
     kiln::putI16(payload + 13 + (i * 2), setpoint);
