@@ -12,6 +12,11 @@ INCLUDES="-I$ROOT/shared/protocol -I$ROOT/firmware/controller_s3/src"
 $CXX $COMMON $INCLUDES \
   "$ROOT/tests/protocol/test_protocol.cpp" \
   -o "$BUILD_DIR/test_protocol"
+
+$CXX $COMMON $INCLUDES \
+  "$ROOT/tests/protocol/test_can_wire.cpp" \
+  -o "$BUILD_DIR/test_can_wire"
+"$BUILD_DIR/test_can_wire"
 "$BUILD_DIR/test_protocol"
 
 $CXX $COMMON $INCLUDES \
