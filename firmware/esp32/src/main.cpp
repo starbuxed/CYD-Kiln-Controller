@@ -34,13 +34,14 @@ static void printBoardProfile() {
 #else
   Serial.println("CAN disabled: exact CYD pins are not yet verified.");
 #endif
-  Serial.printf("Main shutdown-request GPIO configured: %s\n",
-                mainShutdownRequest.configured() ? "yes" : "no");
+  Serial.printf("CYD master-power permit relay configured: %s\n",
+                mainPowerPermit.configured() ? "yes" : "no");
   Serial.println("CYD owns UI/web/SD; the ESP32-S3 owns sensor and output control.");
 }
 
-// Call this from a touchscreen emergency control or a local emergency input.
-// The hardwired request is asserted first; CAN is supplementary.
+// Call this from the touchscreen emergency-stop control or a local trip input.
+// This immediately releases the CYD's own master-power permit relay; the CAN
+// emergency command is only a supplementary notification to the S3.
 void requestEmergencyShutdown() {
   mainPowerPermit.drop();
 #if KILN_CAN_PINMAP_AVAILABLE
