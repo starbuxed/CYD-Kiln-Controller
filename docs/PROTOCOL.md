@@ -76,4 +76,4 @@ The S3 contains a hardware-independent profile engine, four zone controllers, a 
 
 Implemented: shared frame encoding/parsing, CRC, sequence comparison, CYD UART client and configuration senders, S3 UART server, heartbeat exchange, status snapshots, typed configuration staging, command acknowledgements, stale command rejection, and local control-core command handling.
 
-Not yet implemented: MAX31856 (or other) hardware driver, enabled physical GPIO mapping, CYD UI, and end-to-end firing validation.
+Not yet implemented: physical SPI/CS pin configuration and sensor hardware validation, enabled physical relay GPIO mapping, CYD UI, and end-to-end firing validation.
