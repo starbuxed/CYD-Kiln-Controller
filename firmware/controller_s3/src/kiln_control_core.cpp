@@ -64,6 +64,15 @@ void KilnControlCore::update(uint32_t nowMs, const float temps[4],
     return;
   }
   profile_.update(nowMs);
+  if (profile_.state() == PROFILE_WAITING) {
+    bool allZonesAtTarget = true;
+    for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i) {
+      const float zoneTarget = profile_.setpointC() + zoneConfig_[i].setpointOffsetC;
+      if ((validMask & (1u << i)) == 0 ||
+          fabsf(temps[i] - zoneTarget) > 5.0f) allZonesAtTarget = false;
+    }
+    if (allZonesAtTarget) profile_.beginSoak(nowMs);
+  }
   if (profile_.state() == PROFILE_COMPLETE) {
     allOff();
     running_ = false;
