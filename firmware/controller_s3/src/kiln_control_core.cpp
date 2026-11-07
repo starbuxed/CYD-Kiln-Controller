@@ -1,6 +1,5 @@
 #include "kiln_control_core.h"
 #include <math.h>
-
 namespace kiln {
 KilnControlCore::KilnControlCore()
     : configuredCount_(0), profileConfigured_(false), running_(false), paused_(false),
@@ -36,9 +35,6 @@ bool KilnControlCore::setSoakToleranceC(float toleranceC) {
 bool KilnControlCore::configureProfile(const RampSoakSegment* segments,
                                        uint8_t count) {
   if (running_ || paused_ || !profile_.validate(segments, count)) return false;
-  // Store the validated profile by starting only when START is requested.
-  // ProfileEngine::start copies the segment array at that time; retain a
-  // bounded copy here so configuration is independent of caller memory.
   for (uint8_t i = 0; i < count; ++i) {
     if (segments[i].targetC >= maximumAllowedC_) return false;
     for (uint8_t z = 0; z < CONTROL_ZONE_COUNT; ++z) {
@@ -69,13 +65,21 @@ bool KilnControlCore::configureZone(uint8_t zone,
   zoneConfigured_[zone] = true;
   return true;
 }
-bool KilnControlCore::allSensorsValid(uint8_t mask) const {
-  return (mask & 0x0F) == 0x0F;
+bool KilnControlCore::sensorsValid(uint8_t validMask, uint8_t requiredMask) const {
+  requiredMask &= 0x0F;
+  return requiredMask != 0 && (validMask & requiredMask) == requiredMask;
 }
 bool KilnControlCore::start(uint32_t nowMs, const float temps[4],
                             uint8_t validMask, bool linkHealthy) {
+  return start(nowMs, temps, validMask, 0x0F, 0x0F, linkHealthy);
+}
+bool KilnControlCore::start(uint32_t nowMs, const float temps[4],
+                            uint8_t validMask, uint8_t controlMask,
+                            uint8_t safetyMask, bool linkHealthy) {
   if (running_ || paused_ || safety_.faulted() || !profileConfigured_ ||
-      !temps || !allSensorsValid(validMask) || !linkHealthy) return false;
+      !temps || !sensorsValid(validMask, controlMask) ||
+      (controlMask & 0x0F) != 0x0F ||
+      !sensorsValid(validMask, safetyMask) || !linkHealthy) return false;
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i)
     if (!zoneConfigured_[i]) return false;
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i)
@@ -90,8 +94,14 @@ bool KilnControlCore::start(uint32_t nowMs, const float temps[4],
 }
 void KilnControlCore::update(uint32_t nowMs, const float temps[4],
                              uint8_t validMask, bool linkHealthy) {
+  update(nowMs, temps, validMask, 0x0F, 0x0F, linkHealthy);
+}
+void KilnControlCore::update(uint32_t nowMs, const float temps[4],
+                             uint8_t validMask, uint8_t controlMask,
+                             uint8_t safetyMask, bool linkHealthy) {
   if (!running_ && !paused_) return;
-  safety_.update(nowMs, validMask, temps, linkHealthy, true, maximumAllowedC_);
+  safety_.update(nowMs, safetyMask, validMask, temps, linkHealthy, true,
+                 maximumAllowedC_);
   if (safety_.faulted()) {
     allOff();
     running_ = false;
@@ -103,8 +113,9 @@ void KilnControlCore::update(uint32_t nowMs, const float temps[4],
   if (profile_.state() == PROFILE_WAITING) {
     bool allZonesAtTarget = true;
     for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i) {
+      const uint8_t bit = static_cast<uint8_t>(1u << i);
       const float zoneTarget = profile_.setpointC() + zoneConfig_[i].setpointOffsetC;
-      if ((validMask & (1u << i)) == 0 ||
+      if ((controlMask & validMask & bit) == 0 ||
           fabsf(temps[i] - zoneTarget) > soakToleranceC_) allZonesAtTarget = false;
     }
     if (allZonesAtTarget) profile_.beginSoak(nowMs);
@@ -115,9 +126,10 @@ void KilnControlCore::update(uint32_t nowMs, const float temps[4],
     return;
   }
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i) {
+    const uint8_t bit = static_cast<uint8_t>(1u << i);
+    const bool controlValid = (controlMask & validMask & bit) != 0;
     const float target = profile_.setpointC() + zoneConfig_[i].setpointOffsetC;
-    outputs_[i] = zones_[i].update(nowMs, temps[i], target,
-                                   (validMask & (1u << i)) != 0, true);
+    outputs_[i] = zones_[i].update(nowMs, temps[i], target, controlValid, true);
   }
 }
 bool KilnControlCore::pause(uint32_t nowMs) {
@@ -129,8 +141,14 @@ bool KilnControlCore::pause(uint32_t nowMs) {
 }
 bool KilnControlCore::resume(uint32_t nowMs, const float temps[4],
                              uint8_t validMask, bool linkHealthy) {
+  return resume(nowMs, temps, validMask, 0x0F, 0x0F, linkHealthy);
+}
+bool KilnControlCore::resume(uint32_t nowMs, const float temps[4],
+                             uint8_t validMask, uint8_t controlMask,
+                             uint8_t safetyMask, bool linkHealthy) {
   if (!paused_ || safety_.faulted() || !temps ||
-      !allSensorsValid(validMask) || !linkHealthy) return false;
+      !sensorsValid(validMask, controlMask) || (controlMask & 0x0F) != 0x0F ||
+      !sensorsValid(validMask, safetyMask) || !linkHealthy) return false;
   for (uint8_t i = 0; i < CONTROL_ZONE_COUNT; ++i)
     if (!isfinite(temps[i]) || temps[i] < -50.0f ||
         temps[i] >= maximumAllowedC_) return false;
@@ -154,8 +172,13 @@ void KilnControlCore::latchFault(uint16_t fault) {
 }
 bool KilnControlCore::acknowledgeFault(const float temps[4],
                                        uint8_t validMask, bool linkHealthy) {
-  if (!safety_.acknowledge(validMask, linkHealthy, temps, maximumAllowedC_))
-    return false;
+  return acknowledgeFault(temps, validMask, 0x0F, linkHealthy);
+}
+bool KilnControlCore::acknowledgeFault(const float temps[4],
+                                       uint8_t validMask, uint8_t safetyMask,
+                                       bool linkHealthy) {
+  if (!safety_.acknowledge(safetyMask, validMask, linkHealthy, temps,
+                           maximumAllowedC_)) return false;
   if (running_ || paused_) stop();
   return true;
 }
