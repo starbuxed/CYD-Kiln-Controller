@@ -35,3 +35,17 @@ Masks are shown with bit 0 on the right (sensor/output 1).
 ## Implementation status
 
 The hardware-independent `ZoneMapping` module validates mappings and calculates zone measurements. It is covered by native tests. The existing kiln control core still uses its earlier one-zone/one-sensor/one-output loop and must next be refactored to consume this mapping layer before this feature is active in firing control. The S3 controller remains non-operational for firing until that integration, hardware configuration, and safety validation are complete.
+
+
+## Per-sensor PID/control enable
+
+Each zone has two sensor selections:
+
+- `sensor_channels`: sensors associated with the zone and retained for monitoring/safety supervision.
+- `control_sensor_channels`: the subset enabled to contribute to the zone's PID/control temperature.
+
+A sensor can therefore be turned OFF for PID control without being turned OFF as a safety sensor. For example, a kiln can use four sensors to monitor temperature but select only sensors 1 and 3 to calculate the zone control temperature.
+
+The controller supports designated, highest, lowest, and average calculations over the control-enabled subset. Every sensor selected for a group calculation must be valid. A disabled-for-PID sensor remains subject to its own fault and overtemperature checks. The user interface should clearly label these controls as **Use for PID** rather than simply Sensor ON/OFF, to avoid implying that safety monitoring has been disabled.
+
+This setting is per zone mapping. If one physical sensor is assigned to multiple zones, it can be enabled for PID in one zone and excluded from PID in another.
