@@ -55,9 +55,9 @@ void ControllerLink::sendHeartbeat() {
 void ControllerLink::sendStatus() {
   // Fixed v1 status payload (25 bytes):
   // state, fault flags u16, sensor-valid mask, output-command mask,
-  // 4 temperatures in deci-degrees C, 4 setpoints in deci-degrees C.
+  // 4 temperatures, 4 setpoints, 4 sensor fault codes, 4 sensor modes.
   // Until sensor drivers are integrated, readings are marked invalid.
-  uint8_t payload[25] = {};
+  uint8_t payload[29] = {};
   payload[0] = static_cast<uint8_t>(controllerState);
   const uint16_t faults = controlCore.faults();
   payload[1] = static_cast<uint8_t>(faults & 0xFF);
@@ -75,6 +75,7 @@ void ControllerLink::sendStatus() {
     kiln::putI16(payload + 5 + (i * 2), temp);
     kiln::putI16(payload + 13 + (i * 2), setpoint);
     payload[21 + i] = static_cast<uint8_t>(sensorManager.fault(i));
+    payload[25 + i] = static_cast<uint8_t>(sensorManager.mode(i));
   }
   sendFrame(kiln::MSG_STATUS, txSequence_++, payload, sizeof(payload));
 }
@@ -229,6 +230,14 @@ void ControllerLink::handleConfiguration(const kiln::Frame& frame) {
                    ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
       }
       break;
+    case kiln::MSG_SENSOR_MODE_CONFIG:
+      if (frame.length == 2 && frame.payload[0] < 4 &&
+          frame.payload[1] <= kiln::SENSOR_MODE_LOG_SAFETY) {
+        result = sensorManager.setMode(frame.payload[0],
+                   static_cast<kiln::SensorOperatingMode>(frame.payload[1]))
+                   ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
+      }
+      break;
     case kiln::MSG_SENSOR_CONFIG:
       if (frame.length == 4 && frame.payload[0] < 4 && frame.payload[1] <= kiln::TC_B) {
         const float offset = kiln::getI16(frame.payload + 2) / 10.0f;
@@ -281,6 +290,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
     case kiln::MSG_PROFILE_COMMIT:
     case kiln::MSG_ZONE_CONFIG:
     case kiln::MSG_SENSOR_CONFIG:
+    case kiln::MSG_SENSOR_MODE_CONFIG:
     case kiln::MSG_SAFETY_CONFIG:
       handleConfiguration(frame);
       break;
