@@ -28,9 +28,28 @@ static HardwareSerial controllerSerial(1);
 
 // Deliberately disabled until relay input polarity, voltage and S3 GPIOs are
 // confirmed. Firmware cannot energize any external output in this state.
+// Override these only after checking the exact S3 board pinout and relay
+// input electrical interface. Negative pins keep channels disabled by default.
+#ifndef KILN_RELAY1_PIN
+#define KILN_RELAY1_PIN -1
+#endif
+#ifndef KILN_RELAY2_PIN
+#define KILN_RELAY2_PIN -1
+#endif
+#ifndef KILN_RELAY3_PIN
+#define KILN_RELAY3_PIN -1
+#endif
+#ifndef KILN_RELAY4_PIN
+#define KILN_RELAY4_PIN -1
+#endif
+#ifndef KILN_RELAY_ACTIVE_HIGH
+#define KILN_RELAY_ACTIVE_HIGH 1
+#endif
 static const kiln::RelayOutputConfig outputConfig[kiln::RELAY_OUTPUT_COUNT] = {
-  {-1, true, false}, {-1, true, false},
-  {-1, true, false}, {-1, true, false}
+  {KILN_RELAY1_PIN, KILN_RELAY_ACTIVE_HIGH != 0, KILN_RELAY1_PIN >= 0},
+  {KILN_RELAY2_PIN, KILN_RELAY_ACTIVE_HIGH != 0, KILN_RELAY2_PIN >= 0},
+  {KILN_RELAY3_PIN, KILN_RELAY_ACTIVE_HIGH != 0, KILN_RELAY3_PIN >= 0},
+  {KILN_RELAY4_PIN, KILN_RELAY_ACTIVE_HIGH != 0, KILN_RELAY4_PIN >= 0}
 };
 
 void setup() {
