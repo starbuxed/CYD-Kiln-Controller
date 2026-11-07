@@ -36,7 +36,7 @@ Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. A c
 
 ## Safety boundary
 
-START and RESUME are wired to the local control core. START is accepted only when a validated profile, all four zone configurations, four valid live sensor channels, a healthy host link, and four configured physical output channels are present. The current build has no physical thermocouple driver and all output pins are disabled, so it cannot start a firing or energize the outputs.
+START and RESUME are wired to the local control core. START is accepted only when a validated profile, all four zone configurations, four valid Log and control sensor channels, all configured Log and control / Log and safety sensors valid, a healthy host link, and four configured physical output channels are present. The current build has no physical thermocouple driver and all output pins are disabled, so it cannot start a firing or energize the outputs.
 
 No automatic restart or resume is allowed after reset, brownout, sensor loss, communication failure, or a latched fault.
 
