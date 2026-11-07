@@ -3,6 +3,7 @@
 #include "controller_link.h"
 #include "kiln_control_core.h"
 #include "sensor_manager.h"
+#include "max31856_array.h"
 
 // Dedicated ESP32-S3 control processor. Board-specific sensor and output
 // pin assignments remain disabled until the exact hardware is selected.
@@ -21,6 +22,7 @@ kiln::RelayOutputs relayOutputs;
 kiln::ControllerState controllerState = kiln::STATE_BOOT;
 kiln::KilnControlCore controlCore;
 kiln::SensorManager sensorManager;
+kiln::Max31856Array sensorFrontend;
 float kilnTemperaturesC[4] = {0, 0, 0, 0};
 
 static ControllerLink controllerLink;
@@ -77,8 +79,9 @@ void setup() {
   Serial.printf("Independent zones: %u\n", HEATER_ZONE_COUNT);
   Serial.printf("Relay output channels: %u\n", kiln::RELAY_OUTPUT_COUNT);
   Serial.printf("Output configuration valid: %s\n", outputsReady ? "yes" : "no");
-  Serial.println("Sensor front-end driver and board pin map are not configured.");
-  Serial.println("No thermocouple channels are enabled; START remains blocked.");
+  const bool sensorsReady = sensorFrontend.begin();
+  Serial.printf("MAX31856 front-end ready: %s\\n", sensorsReady ? "yes" : "no");
+  Serial.println("Configure per-channel thermocouple types before readings are accepted.");
   Serial.println("All relay outputs are disabled and unassigned.");
 
   if (!outputsReady) {
@@ -102,6 +105,7 @@ void loop() {
 
   // SensorManager accepts readings from the future MAX31856 (or other)
   // hardware adapter. No adapter is attached in this hardware-neutral build.
+  sensorFrontend.update(sensorManager, millis());
   sensorManager.update(millis());
   for (uint8_t i = 0; i < SENSOR_CHANNEL_COUNT; ++i)
     kilnTemperaturesC[i] = sensorManager.temperatureC(i);
