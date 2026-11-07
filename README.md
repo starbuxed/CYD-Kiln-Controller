@@ -24,7 +24,7 @@ The ESP32 is the user-interface, profile-management, logging, and local web-serv
 - **Pro Micro:** dedicated I/O coprocessor for the configured sensors and outputs, with a communication watchdog and fail-safe output behavior.
 - **Independent safety hardware:** high-limit cutoff and appropriately rated power switching must remain effective without either microcontroller or the network.
 
-See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SAFETY.md](docs/SAFETY.md), and [docs/PROTOCOL.md](docs/PROTOCOL.md).
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SAFETY.md](docs/SAFETY.md), [docs/PROTOCOL.md](docs/PROTOCOL.md), and the [CYD board selection guide](docs/CYD_BOARD_SELECTION.md).
 
 ## Repository layout
 
@@ -38,7 +38,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/SAFETY.md](docs/SAFETY.m
 
 ## Current status
 
-This is the initial specification and scaffolding stage. Hardware-dependent pin maps, sensor drivers, electrical interface details, and firmware implementation are intentionally not guessed. Confirm the exact CYD model/revision, Pro Micro voltage/clock variant, temperature sensor type, and relay/driver hardware before implementation.
+The first firmware bring-up increment is in place: selectable CYD board profiles, a shared framed UART protocol, and an ESP32-to-Pro-Micro heartbeat link. It is not yet a kiln-operating controller. Hardware-dependent pin maps, sensor drivers, electrical interface details, and relay outputs remain disabled until the exact CYD model/revision, Pro Micro voltage/clock variant, temperature sensor type, and relay/driver hardware are confirmed.
 
 ## Development principles
 
