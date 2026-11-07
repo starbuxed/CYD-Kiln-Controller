@@ -10,7 +10,7 @@ Every physical sensor has one operating mode, selected independently of zone ass
 |---|---:|---:|---:|---:|
 | **Off** | No | No | No | No |
 | **Log only** | Yes | Yes | No | No |
-| **Log and control** | Yes | Yes | Yes | No |
+| **Log and control** | Yes | Yes | Yes | Yes |
 | **Log and safety** | Yes | Yes | No | Yes |
 
 **Off is the only mode that disables monitoring.** Every other mode continues acquiring and logging the sensor's readings and faults.
