@@ -18,11 +18,11 @@
 - Four-channel sensor manager with per-channel thermocouple type selection (K/J/N/R/S/T/E/B), range checks, sample freshness, driver-fault handling, implausible-rate detection, and four explicit operating modes: Off, Log only, Log and control, and Log and safety.
 - Per-sensor mode masks distinguish acquisition/monitoring, PID eligibility, and safety supervision. Newly configured sensors default to Log and safety; changing modes invalidates the old sample until a fresh reading arrives.
 - Per-sensor operating modes are configurable over UART and reported to the CYD in the 29-byte status payload.
-- The firing core requires all four one-to-one zone inputs to be valid and in Log and control mode. The local safety manager checks only sensors in Log and safety mode for sensor-loss and overtemperature trips; Log only and Log and control readings do not independently trip kiln safety.
+- The firing core requires all four one-to-one zone inputs to be valid and in Log and control mode. The local safety manager checks both Log and control and Log and safety sensors for sensor-loss and overtemperature trips; Log only sensors are acquired and logged but do not independently trip kiln safety.
 - Local latched safety manager for sensor loss, sensor range, overtemperature, and host-link faults.
 - Four-zone control core coordinating profile execution, waiting for all four measured zones to reach target before starting soak timers, independent zone control, and fail-safe output masks.
 - S3 status telemetry reports sensor-valid bits and latched control-core fault flags.
-- Typed UART configuration messages stage/commit ramp-soak profiles and configure all four zones, per-channel thermocouple type/calibration, and maximum safety temperature.
+- Typed UART configuration messages stage/commit ramp-soak profiles and configure all four zones, per-channel thermocouple type/calibration, per-sensor operating mode, and maximum safety temperature.
 - START/PAUSE/RESUME/STOP/ACK_FAULT commands are wired to the local control core; START and RESUME return NOT_READY unless all readiness checks pass.
 - Portable host test sources and a reproducible native C++ test script; GitHub Actions runs the portable tests on pushes and pull requests.
 - CYD build source filter excludes the obsolete Pro Micro transport from the current S3 architecture.
@@ -30,7 +30,7 @@
 ## Not yet implemented or verified
 
 - MAX31856 SPI driver source is implemented with per-channel K/J/N/R/S/T/E/B selection and open/range fault mapping, but the S3 SPI and chip-select pins remain unset and no physical sensor modules have been tested.
-- The CYD browser/touchscreen UI does not yet expose the operating-mode selector; the CYD UART client now has a mode configuration sender and status getter for the future UI.
+- The CYD browser/touchscreen UI does not yet expose the operating-mode selector; the CYD UART client has a mode configuration sender and status getter for the future UI.
 - Flexible sensor-to-zone and zone-to-output mapping remains a standalone module and is not yet integrated into the active firing core. The current firing core still expects one control-enabled sensor per zone.
 - Profile persistence in nonvolatile storage and the CYD-side profile editor/transfer workflow.
 - Verified physical GPIO assignments for the exact S3 board and external relay input interface.
