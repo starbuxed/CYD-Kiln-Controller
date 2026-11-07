@@ -92,7 +92,9 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
           if (!relayOutputs.isConfigured(i)) outputsReady = false;
         if (controllerState == kiln::STATE_IDLE && outputsReady &&
             controlCore.start(millis(), kilnTemperaturesC,
-                              sensorManager.validMask(), hostLinkHealthy())) {
+                              sensorManager.validMask(),
+                              sensorManager.controlEnabledMask(),
+                              sensorManager.safetyEnabledMask(), hostLinkHealthy())) {
           controllerState = kiln::STATE_FIRING;
           result = kiln::RESULT_OK;
         } else {
@@ -118,7 +120,9 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
         result = kiln::RESULT_FAULT_LATCHED;
       } else if (controllerState == kiln::STATE_PAUSED &&
                  controlCore.resume(millis(), kilnTemperaturesC,
-                                    sensorManager.validMask(), hostLinkHealthy())) {
+                                    sensorManager.validMask(),
+                                    sensorManager.controlEnabledMask(),
+                                    sensorManager.safetyEnabledMask(), hostLinkHealthy())) {
         controllerState = kiln::STATE_FIRING;
         result = kiln::RESULT_OK;
       } else {
@@ -136,7 +140,8 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
     case kiln::CMD_ACK_FAULT:
       if (controllerState == kiln::STATE_FAULT) {
         result = controlCore.acknowledgeFault(kilnTemperaturesC,
-                    sensorManager.validMask(), hostLinkHealthy())
+                    sensorManager.validMask(), sensorManager.safetyEnabledMask(),
+                    hostLinkHealthy())
                    ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
         if (result == kiln::RESULT_OK) controllerState = kiln::STATE_IDLE;
       } else {
