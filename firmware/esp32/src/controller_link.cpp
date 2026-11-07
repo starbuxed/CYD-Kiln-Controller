@@ -106,7 +106,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
   if (frame.type == kiln::MSG_STATUS) {
     // S3 status payload: state, fault flags(2), sensor mask, output mask,
     // four temperatures and four setpoints, all signed deci-degrees.
-    if (frame.length != 21) return;
+    if (frame.length != 25) return;
     controllerState_ = frame.payload[0];
     faultFlags_ = static_cast<uint16_t>(frame.payload[1]) |
                   (static_cast<uint16_t>(frame.payload[2]) << 8);
@@ -115,6 +115,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
     for (uint8_t i = 0; i < 4; ++i) {
       temperatures_[i] = kiln::getI16(frame.payload + 5 + (i * 2));
       setpoints_[i] = kiln::getI16(frame.payload + 13 + (i * 2));
+      sensorFaults_[i] = frame.payload[21 + i];
     }
     hasStatus_ = true;
     return;
