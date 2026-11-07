@@ -33,7 +33,6 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/HARDWARE.md](docs/HARDWA
 
 - `firmware/esp32/` — CYD operator-interface firmware.
 - `firmware/controller_s3/` — dedicated ESP32-S3 controller firmware.
-- `firmware/promicro/` — legacy Pro Micro prototype.
 - `web/` — browser application served by the CYD.
 - `shared/` — protocol definitions and schemas.
 - `docs/` — architecture, safety, hardware, and API documentation.
