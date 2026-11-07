@@ -126,6 +126,7 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
       sensorModes_[i] = frame.payload[25 + i];
     }
     hasStatus_ = true;
+    lastStatusRxMs_ = millis();
     return;
   }
   if (frame.type == kiln::MSG_ACK && frame.length == 2) {
