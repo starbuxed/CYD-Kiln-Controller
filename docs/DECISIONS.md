@@ -4,7 +4,6 @@
 |---|---|---|
 | Operator interface | CYD ESP32 | Selected; exact revision TBD |
 | Dedicated controller | ESP32-S3 DevKitC-1 | Recommended; pin map to verify |
-| Legacy Pro Micro | Not used in target architecture | Retained as historical prototype |
 | Temperature channels | Four independent channels | User selected |
 | Sensor mix | Per-channel configurable thermocouple types | Assumed meaning of "mixed"; RTD requires separate front end |
 | Thermocouple front end | One MAX31856-class interface per channel | Candidate; verify module |
