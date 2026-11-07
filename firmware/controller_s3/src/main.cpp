@@ -87,6 +87,9 @@ void loop() {
     if (controlCore.faulted()) {
       relayOutputs.allInactive();
       controllerState = kiln::STATE_FAULT;
+    } else if (controlCore.profileState() == kiln::PROFILE_COMPLETE) {
+      relayOutputs.allInactive();
+      controllerState = kiln::STATE_COMPLETE;
     } else {
       for (uint8_t i = 0; i < kiln::RELAY_OUTPUT_COUNT; ++i)
         relayOutputs.set(i, controlCore.outputOn(i));
