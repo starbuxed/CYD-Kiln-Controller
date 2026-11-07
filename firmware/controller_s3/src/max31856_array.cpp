@@ -76,7 +76,7 @@ void Max31856Array::update(SensorManager& manager, uint32_t nowMs) {
   if (!ready_ || static_cast<uint32_t>(nowMs - lastReadMs_) < 250UL) return;
   lastReadMs_ = nowMs;
   for (uint8_t i = 0; i < TEMPERATURE_CHANNELS; ++i) {
-    if (!channelReady_[i] || !manager.configured(i)) continue;
+    if (!channelReady_[i] || !manager.monitoringEnabled(i)) continue;
     const uint8_t fault = devices_[i]->readFault();
     if (fault != 0) {
       SensorFault mapped = SENSOR_CONVERSION;
