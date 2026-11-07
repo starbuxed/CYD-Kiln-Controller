@@ -37,7 +37,7 @@ bool ControllerLink::sendCommand(uint8_t command) {
 }
 
 bool ControllerLink::requestStatus() {
-  if (!serial_) return false;
+  if (!stream_ || !stream_->started()) return false;
   sendFrame(kiln::MSG_GET_STATUS, nullptr, 0);
   return true;
 }
@@ -151,7 +151,7 @@ void ControllerLink::update() {
 }
 
 bool ControllerLink::connected() const {
-  return heartbeatSeen_ &&
+  return stream_ && stream_->healthy() && heartbeatSeen_ &&
          static_cast<uint32_t>(millis() - lastHeartbeatRxMs_) <= LINK_TIMEOUT_MS;
 }
 uint32_t ControllerLink::heartbeatAgeMs() const {
