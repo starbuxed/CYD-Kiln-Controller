@@ -1,8 +1,13 @@
 #include "controller_link.h"
 #include "relay_outputs.h"
+#include "kiln_control_core.h"
+#include "sensor_manager.h"
 
 extern kiln::RelayOutputs relayOutputs;
 extern kiln::ControllerState controllerState;
+extern kiln::KilnControlCore controlCore;
+extern kiln::SensorManager sensorManager;
+extern float kilnTemperaturesC[4];
 
 static constexpr uint32_t HOST_TIMEOUT_MS = 2500;
 static constexpr uint32_t HEARTBEAT_INTERVAL_MS = 500;
@@ -52,16 +57,20 @@ void ControllerLink::sendStatus() {
   // Until sensor drivers are integrated, readings are marked invalid.
   uint8_t payload[21] = {};
   payload[0] = static_cast<uint8_t>(controllerState);
-  payload[1] = 0; payload[2] = 0; // fault flags
-  payload[3] = 0; // sensor-valid mask: no hardware sensors implemented yet
+  const uint16_t faults = controlCore.faults();
+  payload[1] = static_cast<uint8_t>(faults & 0xFF);
+  payload[2] = static_cast<uint8_t>(faults >> 8);
+  payload[3] = sensorManager.validMask();
   uint8_t outputMask = 0;
   for (uint8_t i = 0; i < kiln::RELAY_OUTPUT_COUNT; ++i) {
     if (relayOutputs.commandedActive(i)) outputMask |= static_cast<uint8_t>(1U << i);
   }
   payload[4] = outputMask;
   for (uint8_t i = 0; i < 4; ++i) {
-    kiln::putI16(payload + 5 + (i * 2), 0);
-    kiln::putI16(payload + 13 + (i * 2), 0);
+    const int16_t temp = static_cast<int16_t>(kilnTemperaturesC[i] * 100.0f);
+    const int16_t setpoint = static_cast<int16_t>(controlCore.setpointC(i) * 100.0f);
+    kiln::putI16(payload + 5 + (i * 2), temp);
+    kiln::putI16(payload + 13 + (i * 2), setpoint);
   }
   sendFrame(kiln::MSG_STATUS, txSequence_++, payload, sizeof(payload));
 }
@@ -78,6 +87,7 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
 
     case kiln::CMD_PAUSE:
       if (controllerState == kiln::STATE_FIRING) {
+        controlCore.pause(millis());
         relayOutputs.allInactive();
         controllerState = kiln::STATE_PAUSED;
         result = kiln::RESULT_OK;
@@ -90,15 +100,21 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
       break;
 
     case kiln::CMD_STOP:
+      controlCore.stop();
       relayOutputs.allInactive();
       if (controllerState != kiln::STATE_FAULT) controllerState = kiln::STATE_IDLE;
       result = kiln::RESULT_OK;
       break;
 
     case kiln::CMD_ACK_FAULT:
-      // Fault clearing requires explicit recovery checks; not implemented yet.
-      result = (controllerState == kiln::STATE_FAULT)
-                 ? kiln::RESULT_NOT_READY : kiln::RESULT_INVALID_STATE;
+      if (controllerState == kiln::STATE_FAULT) {
+        result = controlCore.acknowledgeFault(kilnTemperaturesC,
+                    sensorManager.validMask(), hostHeartbeatSeen_)
+                   ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
+        if (result == kiln::RESULT_OK) controllerState = kiln::STATE_IDLE;
+      } else {
+        result = kiln::RESULT_INVALID_STATE;
+      }
       break;
 
     default:
