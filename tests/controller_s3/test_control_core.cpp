@@ -35,7 +35,8 @@ int main() {
   assert(!zone.update(0, 20.0f, 100.0f, false, true));
   assert(!zone.update(0, 20.0f, 100.0f, true, true));
   assert(zone.update(1000, 20.0f, 100.0f, true, true));
-  assert(zone.update(1500, 102.0f, 100.0f, true, true) == false);
+  assert(zone.update(1500, 102.0f, 100.0f, true, true));
+  assert(!zone.update(2000, 102.0f, 100.0f, true, true));
 
   SafetyManager safety;
   float temps[4] = {100, 101, 99, 100};
