@@ -25,6 +25,7 @@ class ControllerLink {
 
   bool hasStatus() const { return hasStatus_; }
   uint8_t controllerState() const { return controllerState_; }
+  uint16_t faultFlags() const { return faultFlags_; }
   uint8_t sensorValidMask() const { return sensorValidMask_; }
   uint8_t outputCommandMask() const { return outputCommandMask_; }
   int16_t temperatureDeciC(uint8_t channel) const;
@@ -44,6 +45,7 @@ class ControllerLink {
   bool heartbeatSeen_ = false;
   bool hasStatus_ = false;
   uint8_t controllerState_ = kiln::STATE_BOOT;
+  uint16_t faultFlags_ = 0;
   uint8_t sensorValidMask_ = 0;
   uint8_t outputCommandMask_ = 0;
   int16_t temperatures_[4] = {};
