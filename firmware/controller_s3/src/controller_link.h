@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include "kiln_protocol.h"
+#include "profile_engine.h"
 
 class ControllerLink {
  public:
@@ -18,6 +19,8 @@ class ControllerLink {
   void sendAck(uint16_t sequence, uint8_t command, uint8_t result);
   void handleCommand(const kiln::Frame& frame);
   void applyCommand(uint8_t command, uint8_t& result);
+  void handleConfiguration(const kiln::Frame& frame);
+  bool acceptHostSequence(const kiln::Frame& frame);
   void sendHeartbeat();
 
   HardwareSerial* serial_ = nullptr;
@@ -29,4 +32,8 @@ class ControllerLink {
   uint32_t lastHeartbeatTxMs_ = 0;
   uint32_t lastStatusTxMs_ = 0;
   bool hostHeartbeatSeen_ = false;
+  kiln::RampSoakSegment stagedProfile_[kiln::MAX_PROFILE_SEGMENTS];
+  uint8_t stagedProfileCount_ = 0;
+  uint32_t stagedProfileMask_ = 0;
+  bool profileStaging_ = false;
 };
