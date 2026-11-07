@@ -5,7 +5,7 @@ namespace kiln {
 
 ZoneMapping::ZoneMapping() {
   for (uint8_t i = 0; i < MAPPING_ZONE_COUNT; ++i) {
-    zones_[i] = {false, 0, 0, SENSOR_COMBINE_DESIGNATED, 0};
+    zones_[i] = {false, 0, 0, 0, SENSOR_COMBINE_DESIGNATED, 0};
     configured_[i] = false;
   }
 }
@@ -17,15 +17,18 @@ bool ZoneMapping::validate(
   for (uint8_t z = 0; z < MAPPING_ZONE_COUNT; ++z) {
     const ZoneMappingConfig& c = configs[z];
     if (!c.enabled) {
-      if (c.sensorMask != 0 || c.outputMask != 0) return false;
+      if (c.sensorMask != 0 || c.controlSensorMask != 0 || c.outputMask != 0)
+        return false;
       continue;
     }
-    if (c.sensorMask == 0 || c.outputMask == 0 ||
-        (c.sensorMask & 0xF0) != 0 || (c.outputMask & 0xF0) != 0 ||
+    if (c.sensorMask == 0 || c.controlSensorMask == 0 || c.outputMask == 0 ||
+        (c.sensorMask & 0xF0) != 0 || (c.controlSensorMask & 0xF0) != 0 ||
+        (c.outputMask & 0xF0) != 0 ||
+        (c.controlSensorMask & static_cast<uint8_t>(~c.sensorMask)) != 0 ||
         c.combineMode > SENSOR_COMBINE_AVERAGE) return false;
     if (c.combineMode == SENSOR_COMBINE_DESIGNATED &&
         (c.designatedSensor >= MAPPING_SENSOR_COUNT ||
-         (c.sensorMask & (1u << c.designatedSensor)) == 0)) return false;
+         (c.controlSensorMask & (1u << c.designatedSensor)) == 0)) return false;
     if ((usedOutputs & c.outputMask) != 0) return false;
     usedOutputs |= c.outputMask;
   }
@@ -37,7 +40,7 @@ bool ZoneMapping::configure(uint8_t zone, const ZoneMappingConfig& config) {
   ZoneMappingConfig candidate[MAPPING_ZONE_COUNT];
   for (uint8_t i = 0; i < MAPPING_ZONE_COUNT; ++i)
     candidate[i] = configured_[i] ? zones_[i]
-                                  : ZoneMappingConfig{false, 0, 0, SENSOR_COMBINE_DESIGNATED, 0};
+        : ZoneMappingConfig{false, 0, 0, 0, SENSOR_COMBINE_DESIGNATED, 0};
   candidate[zone] = config;
   if (!validate(candidate)) return false;
   zones_[zone] = config;
@@ -61,7 +64,7 @@ bool ZoneMapping::configured(uint8_t zone) const {
 
 const ZoneMappingConfig& ZoneMapping::config(uint8_t zone) const {
   static const ZoneMappingConfig invalid = {
-      false, 0, 0, SENSOR_COMBINE_DESIGNATED, 0};
+      false, 0, 0, 0, SENSOR_COMBINE_DESIGNATED, 0};
   return zone < MAPPING_ZONE_COUNT ? zones_[zone] : invalid;
 }
 
@@ -73,7 +76,9 @@ ZoneMeasurement ZoneMapping::measure(
       !zones_[zone].enabled) return result;
 
   const ZoneMappingConfig& c = zones_[zone];
-  const uint8_t available = static_cast<uint8_t>(c.sensorMask & validSensorMask & 0x0F);
+  // Only control-enabled sensors contribute to the zone PID/control reading.
+  const uint8_t controlMask = c.controlSensorMask;
+  const uint8_t available = static_cast<uint8_t>(controlMask & validSensorMask & 0x0F);
   if (c.combineMode == SENSOR_COMBINE_DESIGNATED) {
     const uint8_t bit = static_cast<uint8_t>(1u << c.designatedSensor);
     if ((available & bit) == 0 || !isfinite(temperaturesC[c.designatedSensor]))
@@ -84,17 +89,17 @@ ZoneMeasurement ZoneMapping::measure(
     return result;
   }
 
-  // A group measurement is valid only when every assigned sensor is valid.
-  // This prevents a failed sensor from silently disappearing from an average
-  // or extrema calculation and masking a wiring or sensor fault.
-  if (available != c.sensorMask) return result;
+  // Every sensor enabled for control must be valid. Sensors assigned to the
+  // zone but disabled for PID/control remain monitored separately by safety.
+  if (available != controlMask) return result;
 
   bool first = true;
   float aggregate = 0.0f;
   float sum = 0.0f;
+  uint8_t count = 0;
   for (uint8_t s = 0; s < MAPPING_SENSOR_COUNT; ++s) {
     const uint8_t bit = static_cast<uint8_t>(1u << s);
-    if ((c.sensorMask & bit) == 0) continue;
+    if ((controlMask & bit) == 0) continue;
     const float value = temperaturesC[s];
     if (!isfinite(value)) return result;
     if (first) {
@@ -106,13 +111,13 @@ ZoneMeasurement ZoneMapping::measure(
       aggregate = value;
     }
     sum += value;
+    ++count;
   }
-  if (first) return result;
+  if (first || count == 0) return result;
   result.valid = true;
   result.temperatureC = c.combineMode == SENSOR_COMBINE_AVERAGE
-                           ? sum / static_cast<float>(__builtin_popcount(c.sensorMask))
-                           : aggregate;
-  result.contributingSensorMask = c.sensorMask;
+                           ? sum / static_cast<float>(count) : aggregate;
+  result.contributingSensorMask = controlMask;
   return result;
 }
 
@@ -120,6 +125,13 @@ uint8_t ZoneMapping::requiredSensorMask() const {
   uint8_t mask = 0;
   for (uint8_t z = 0; z < MAPPING_ZONE_COUNT; ++z)
     if (configured_[z] && zones_[z].enabled) mask |= zones_[z].sensorMask;
+  return mask;
+}
+
+uint8_t ZoneMapping::controlSensorMask() const {
+  uint8_t mask = 0;
+  for (uint8_t z = 0; z < MAPPING_ZONE_COUNT; ++z)
+    if (configured_[z] && zones_[z].enabled) mask |= zones_[z].controlSensorMask;
   return mask;
 }
 
