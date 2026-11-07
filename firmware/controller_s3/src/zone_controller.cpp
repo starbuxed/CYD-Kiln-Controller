@@ -2,7 +2,7 @@
 #include <math.h>
 namespace kiln {
 ZoneController::ZoneController()
-    : configured_(false), outputOn_(false), hasChanged_(false), lastChangeMs_(0) {
+    : configured_(false), outputOn_(false), hasChanged_(true), lastChangeMs_(0), lastUpdateMs_(0) {
   config_ = {5.0f, 30000UL, 30000UL};
 }
 bool ZoneController::configure(const ZoneConfig& c) {
@@ -11,13 +11,20 @@ bool ZoneController::configure(const ZoneConfig& c) {
       c.minimumOffMs > 3600000UL) return false;
   config_ = c;
   configured_ = true;
-  forceOff();
-  hasChanged_ = false;
+  outputOn_ = false;
+  lastChangeMs_ = lastUpdateMs_;
+  hasChanged_ = true;
   return true;
+}
+void ZoneController::forceOff() {
+  outputOn_ = false;
+  lastChangeMs_ = lastUpdateMs_;
+  hasChanged_ = true;
 }
 bool ZoneController::update(uint32_t nowMs, float temperatureC,
                             float setpointC, bool sensorValid,
                             bool heatPermitted) {
+  lastUpdateMs_ = nowMs;
   if (!configured_ || !sensorValid || !heatPermitted ||
       !isfinite(temperatureC) || !isfinite(setpointC)) {
     forceOff();
