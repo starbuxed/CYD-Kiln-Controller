@@ -39,7 +39,7 @@ Locally hosted ceramic kiln controller with a CYD ESP32 operator interface and a
 
 ## Status
 
-The repository has a safety-oriented foundation: ramp/soak, four-zone control, sensor manager, MAX31856 driver abstraction, relay abstraction, UART scaffolding, and native tests. This branch records the CAN migration and independent shutdown requirements. Full CAN firmware, UI/web, SD asset manager, and physical safety circuit have not been implemented/validated yet.
+The repository has a safety-oriented foundation: ramp/soak, four-zone control, sensor manager, MAX31856 driver abstraction, relay abstraction, CAN transport scaffolding, and native tests. This branch records the CAN migration and independent shutdown requirements. Full CAN firmware, UI/web, SD asset manager, and physical safety circuit have not been implemented/validated yet.
 
 Do not connect kiln heating power. Test with simulation and low-voltage indicators until hardware and independent safety circuit are reviewed.
 
