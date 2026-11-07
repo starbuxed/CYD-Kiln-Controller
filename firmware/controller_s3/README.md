@@ -20,7 +20,7 @@ This firmware target is the local control processor. The CYD ESP32 is the operat
 - `safety_manager.*`: latched sensor-loss, sensor-range, overtemperature, and host-link faults.
 - `kiln_control_core.*`: coordinates the profile, four zones, and fail-safe logical output states.
 - `relay_outputs.*`: validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins inactive.
-- `controller_link.*`: UART heartbeat, status telemetry, command validation, acknowledgements, and host-link timeout handling.
+- `controller_link.*`: UART heartbeat, status telemetry, typed profile/zone/sensor/safety configuration, START/PAUSE/RESUME/STOP/ACK_FAULT handling, acknowledgements, and host-link timeout handling.
 
 The modules are deliberately separated from hardware drivers so the profile, zone, sensor-validation, and safety logic can be host-tested without the ESP32 boards.
 
@@ -34,7 +34,7 @@ Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. A c
 
 ## Safety boundary
 
-START and RESUME are intentionally rejected by the UART command handler. The current application cannot start a firing or energize the disabled output channels. These commands must remain blocked until sensor acquisition, profile transfer, physical output mapping, and end-to-end safety validation are complete.
+START and RESUME are wired to the local control core. START is accepted only when a validated profile, all four zone configurations, four valid live sensor channels, a healthy host link, and four configured physical output channels are present. The current build has no physical thermocouple driver and all output pins are disabled, so it cannot start a firing or energize the outputs.
 
 No automatic restart or resume is allowed after reset, brownout, sensor loss, communication failure, or a latched fault.
 
@@ -52,4 +52,4 @@ Run portable host tests from the repository root:
 sh tests/run_native_tests.sh
 ```
 
-Neither the ESP32 board build nor physical hardware has been tested yet.
+Native portable C++ tests run in GitHub Actions. Separate GitHub Actions jobs build the ESP32-S3 and classic CYD PlatformIO targets. Physical hardware has not been tested.
