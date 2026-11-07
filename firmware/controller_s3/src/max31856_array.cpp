@@ -81,7 +81,7 @@ void Max31856Array::update(SensorManager& manager, uint32_t nowMs) {
     if (fault != 0) {
       SensorFault mapped = SENSOR_CONVERSION;
       if (fault & MAX31856_FAULT_OPEN) mapped = SENSOR_OPEN;
-      else if (fault & MAX31856_FAULT_OVUV) mapped = SENSOR_SHORT;
+      else if (fault & MAX31856_FAULT_TCRANGE) mapped = SENSOR_OUT_OF_RANGE;
       manager.submitSample(i, NAN, mapped, nowMs);
       continue;
     }
