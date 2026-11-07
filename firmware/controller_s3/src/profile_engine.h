@@ -17,9 +17,10 @@ enum ProfileRunState : uint8_t {
   PROFILE_IDLE = 0,
   PROFILE_RAMPING = 1,
   PROFILE_SOAKING = 2,
-  PROFILE_PAUSED = 3,
-  PROFILE_COMPLETE = 4,
-  PROFILE_INVALID = 5
+  PROFILE_WAITING = 3,
+  PROFILE_PAUSED = 4,
+  PROFILE_COMPLETE = 5,
+  PROFILE_INVALID = 6
 };
 
 class ProfileEngine {
@@ -29,6 +30,7 @@ class ProfileEngine {
   bool start(const RampSoakSegment* segments, uint8_t count,
              float startingTempC, uint32_t nowMs);
   void update(uint32_t nowMs);
+  bool beginSoak(uint32_t nowMs);
   void pause(uint32_t nowMs);
   bool resume(uint32_t nowMs);
   void stop();
@@ -43,6 +45,7 @@ class ProfileEngine {
   uint8_t count_;
   uint8_t segmentIndex_;
   ProfileRunState state_;
+  ProfileRunState stateBeforePause_;
   float segmentStartC_;
   float setpointC_;
   uint32_t phaseStartMs_;
