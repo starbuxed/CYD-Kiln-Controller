@@ -15,11 +15,10 @@ enum SensorFault : uint8_t {
 // Sensor responsibility is independent of zone assignment and PID selection.
 enum SensorOperatingMode : uint8_t {
   SENSOR_MODE_OFF = 0,          // No acquisition, logging, control, or safety supervision.
-  SENSOR_MODE_LOG_ONLY = 1,     // Acquire and log; no control or safety trip.
-  SENSOR_MODE_LOG_CONTROL = 2,  // Acquire, log, allow PID use, and supervise safety.
-  SENSOR_MODE_LOG_SAFETY = 3    // Acquire, log, and supervise faults/overtemperature; no PID use.
-};
-struct TemperatureReading {
+  SENSOR_MODE_LOG_ONLY = 1,     // Acquire/log; no PID use; still safety-supervised.
+  SENSOR_MODE_LOG_CONTROL = 2,  // Acquire/log, allow PID use, and supervise safety.
+  SENSOR_MODE_LOG_SAFETY = 3    // Acquire/log and supervise safety; no PID use.
+};struct TemperatureReading {
   float temperatureC;
   uint32_t sampledAtMs;
   SensorFault fault;
