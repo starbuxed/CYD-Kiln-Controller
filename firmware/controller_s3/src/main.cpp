@@ -92,8 +92,8 @@ void setup() {
   Serial.printf("Independent zones: %u\n", HEATER_ZONE_COUNT);
   Serial.printf("Relay output channels: %u\n", kiln::RELAY_OUTPUT_COUNT);
   Serial.printf("Output configuration valid: %s\n", outputsReady ? "yes" : "no");
-  Serial.printf("Secondary shutdown-request configured: %s\n",
-                secondaryShutdownRequest.configured() ? "yes" : "no");
+  Serial.printf("S3 master-power permit relay configured: %s\n",
+                secondaryPowerPermit.configured() ? "yes" : "no");
   const bool sensorsReady = sensorFrontend.begin();
   Serial.printf("MAX31856 front-end ready: %s\n", sensorsReady ? "yes" : "no");
   Serial.println("Sensor SPI/CS GPIOs and relay GPIOs remain disabled until verified.");
