@@ -4,94 +4,86 @@
 
 | Subsystem | Current direction | Status |
 |---|---|---|
-| Operator interface | Existing CYD ESP32 | Family selected; exact revision still required |
-| Dedicated kiln controller | ESP32-S3 development board, initially ESP32-S3-DevKitC-1 | Recommended; exact board and pin map to verify |
-| Control topology | Four independent heater zones | User selected |
-| Temperature inputs | Four individually configurable sensor channels | User selected mixed/configurable thermocouples; exact probes TBD |
-| Thermocouple front ends | Candidate: four MAX31856-class interfaces, one per channel | Candidate only; verify module, isolation, range, and probe compatibility |
-| RTD support | Add MAX31865-class front end for any RTD channel | Not included in current thermocouple-only assumption |
-| Heater outputs | Four isolated low-voltage driver channels | Required; topology and ratings TBD |
-| Power supply | Actual kiln supply not yet identified | Open; do not size power components |
-| Independent safety | High-limit device(s), safety contactor, disconnect, overcurrent protection | Required; design and ratings TBD |
+| Operator interface | Existing CYD ESP32 | Exact revision still required |
+| Dedicated controller | ESP32-S3 development board, initially ESP32-S3-DevKitC-1 | Recommended; pin map to verify |
+| Temperature inputs | Four independently configurable channels | User selected mixed thermocouples; exact probes TBD |
+| Thermocouple front ends | Four MAX31856-class interfaces, one per channel | Candidate; verify modules and probe compatibility |
+| Heater control commands | Four independent digital ON/OFF requests | User will select/provide external relay or SSR hardware |
+| Logic interface | Four protected/isolated low-voltage output interfaces | Design to match the external relay-module input requirements |
+| Kiln power switching | External relay/SSR/contactor equipment | Outside this controller firmware's design scope |
+| Independent safety | Kiln-side high-limit and power protection | Must remain independent of the microcontroller |
+
+## What this controller will do
+
+The ESP32-S3 controller will read four temperatures and operate four independent digital control outputs. Each output has two logical states: ON and OFF. The control firmware will not need to know the mains voltage, heater current, phase arrangement, or relay load rating in order to issue those logical commands.
+
+The user is responsible for selecting and installing the external relay/SSR/power-switching equipment appropriate for the kiln. The controller's low-voltage output interface must be electrically compatible with the selected relay module's control input.
+
+The ESP32-S3 GPIO pins must not directly drive arbitrary relay coils or heater loads. Use a suitable interface stage (for example, a transistor or optically isolated driver board) matched to the relay module's input voltage, current, polarity, and isolation requirements. The firmware will expose configurable active-high/active-low logic and a defined inactive state. Hardware must hold every output inactive while the ESP32-S3 is reset, booting, unpowered, or in a fault state.
+
+This project is implementing relay **control signals**, not designing the kiln's mains power circuit.
 
 ## Dedicated controller recommendation
 
-Use a separate ESP32-S3 board for the kiln-control processor, rather than a Pro Micro or RP2040 for this iteration. The ESP32-S3 has sufficient processing and peripheral resources for four sensor interfaces, four local control loops, diagnostics, and a framed link to the CYD. It also keeps the project within one microcontroller toolchain.
-
-A suitable development starting point is the Espressif ESP32-S3-DevKitC-1. For a final kiln installation, consider a custom carrier/PCB with screw terminals, protected power, isolated interfaces, clear separation of low-voltage and hazardous-voltage wiring, and serviceable connectors. The DevKit board itself is not an industrial safety controller.
+Use a separate ESP32-S3 board for the kiln-control processor rather than a Pro Micro or RP2040 for this iteration. A suitable development starting point is the Espressif ESP32-S3-DevKitC-1. For a final installation, a carrier PCB can provide sensor connectors, four protected output interfaces, power regulation, and serviceable connectors.
 
 ## Four temperature channels and mixed thermocouples
 
-The current assumption is that "mixed" means different thermocouple types can be used on different channels. Each channel must have its own configuration field, for example:
+The current assumption is that "mixed" means different thermocouple types can be used on different channels. Each channel must have its own configuration field:
 
-- `sensor_type`: K, J, N, R, S, T, E, or B (only enable types supported by the selected front-end and actual probe).
+- `sensor_type`: K, J, N, R, S, T, E, or B, limited to types supported by the selected front end and actual probe.
 - `front_end`: exact converter/module model.
 - `enabled`: channel enabled/disabled.
 - `calibration_offset_c`: bounded calibration correction.
 - `minimum_valid_c` / `maximum_valid_c`: application limits appropriate to the installed probe and kiln.
 - `sample_interval_ms` and `stale_after_ms`.
-- `zone_id`: zone controlled by this sensor, with one-to-one mapping as the initial default.
+- `zone_id`: zone controlled by this sensor; one-to-one mapping is the initial default.
 
 A MAX31856 is a thermocouple-to-digital converter, not an RTD interface. It is a candidate for each thermocouple channel because it supports multiple thermocouple types. Confirm the exact module's electrical design, cold-junction placement, isolation, wiring connector, noise immunity, and usable temperature range. Do not assume a low-cost breakout board provides galvanic isolation.
 
-If any channel is to use an RTD (PT100/PT1000), it needs an RTD-capable front end, such as a MAX31865-class interface, and a separately validated sensor configuration. Do not connect an RTD to a MAX31856.
+If any channel is to use an RTD (PT100/PT1000), it needs an RTD-capable front end, such as a MAX31865-class interface. Do not connect an RTD to a MAX31856.
 
-Four thermocouple channels should be electrically and physically arranged to reduce noise pickup from heater wiring. Use appropriate thermocouple extension wire and connectors of the matching type, correct polarity, strain relief, and separation from mains/heater conductors. Sensor wiring and grounding/shielding must follow the selected probe and front-end manufacturers' instructions.
+## Four independent digital outputs
 
-## Four independent heater circuits
+The firmware will expose four independently controlled output channels, each with:
+- Logical command: ON or OFF.
+- Configurable active polarity (active-high or active-low).
+- Configurable startup/inactive level.
+- A hardware-defined inactive state during reset and boot.
+- Fault override that forces all outputs inactive.
+- Optional output feedback input, if the user's relay hardware provides one.
 
-Each of the four control outputs is assigned to one independently controlled heater circuit/zone by default. The dedicated ESP32-S3 computes four separate control demands. The output hardware must be selected for the actual heater voltage, current, phase arrangement, duty-cycle strategy, fault behavior, and enclosure temperature.
+The output abstraction will not assume a particular relay board, SSR input voltage, coil voltage, or load. Those are external hardware choices. Before connecting the controller to a relay module, verify its control-input voltage/current, active polarity, isolation, and whether it is a logic input or a bare coil. Do not connect a bare relay coil directly to an ESP32 GPIO.
 
-Do not select SSR current ratings, contactor ratings, fuses, wire gauges, heat sinks, branch protection, or disconnect hardware until the actual kiln supply and each heater circuit's electrical ratings are known. Those choices require the kiln nameplate, wiring diagram, measured/known heater load, applicable electrical code, and qualified review.
+The four channels are independent commands; the firmware does not infer the physical heater state from the commanded logic level. Without feedback, the UI must label them as commanded ON/OFF, not verified heater power.
 
-The ESP32-S3 pins must only drive suitable low-voltage isolated driver inputs. They must never drive heater coils/elements directly. A SSR may fail shorted; software commanding its input low does not prove that heater power is off. Provide an appropriately rated independent safety contactor/final disconnect and suitable feedback/current monitoring where required by the safety analysis.
+## Logic power and communication
 
-The control strategy may use zero-cross SSRs with time-proportioning control for compatible resistive heater loads, but the cycle time and switching scheme must be selected for the specific kiln and SSR. Do not assume phase-angle control or a generic relay module is suitable.
-
-## Unknown kiln supply: required information before power-stage design
-
-The user selected "other / not sure" for the supply. Keep all mains-power component choices open. Before any power wiring design, identify:
-
-1. Kiln nameplate voltage and frequency.
-2. Single-phase, split-phase, or three-phase supply and number of conductors.
-3. Nameplate/current rating and total rated input power.
-4. Each of the four heater circuit ratings and how elements are grouped.
-5. Whether the kiln already has contactors, SSRs, fuses, a high-limit controller, or a factory control board.
-6. Whether the existing kiln is being retrofitted or this is a new kiln build.
-
-Do not infer a US 240 V single-phase supply from location or assume the heater circuits are equal. The word "other" is an unresolved electrical specification, not permission to guess.
-
-## Logic power, communication, and isolation
-
-- Use a properly regulated low-voltage supply for the ESP32-S3 and sensor front ends, with brownout behavior documented.
+- Use a properly regulated low-voltage supply for the ESP32-S3 and sensor front ends.
 - Confirm the exact ESP32-S3 board logic voltage and pin availability.
-- Use a robust, framed, CRC-protected UART link between the CYD and dedicated controller.
-- Both are ESP32-family 3.3 V logic devices, but still verify board pin assignments, ground strategy, cable routing, and any required isolation.
-- Keep sensor, logic, and heater wiring separated according to the electrical design.
-- Consider isolated SPI/front ends or isolated sensor interfaces where the sensor wiring and kiln grounding/noise environment require it.
-- The controller must boot with all heater driver requests inactive. Hardware pull-downs or equivalent circuitry should hold driver inputs in the safe state during reset and boot.
+- Use a framed, CRC-protected UART link between the CYD and dedicated controller.
+- Both boards use 3.3 V logic, but verify exact pin assignments, cable routing, and grounding.
+- Keep sensor wiring separated from relay/heater power wiring.
+- Use appropriate interface isolation where required by the actual installation.
+- Provide external biasing so all four relay-control inputs remain inactive during MCU reset, boot, brownout, or unpowered conditions.
 
-## Independent safety hardware
+## Safety boundary
 
-The safety chain must not depend on the ESP32-S3, CYD, firmware, Wi-Fi, browser, or serial link. At minimum, the design must include a suitable independent over-temperature/high-limit function and a final power-disconnect device. The number, placement, and ratings of high-limit sensors and switching devices must be determined from the kiln design and applicable requirements.
-
-Provide appropriate overcurrent protection, protective earthing/grounding, enclosure, conductor sizing, isolation, creepage/clearance, and strain relief. Have mains/high-current design and commissioning reviewed by a qualified professional.
+The ESP32-S3 firmware will force its four control requests inactive on boot, reset, watchdog timeout, invalid sensor data, or a latched safety fault. These are software control behaviors, not a certified safety function. The kiln installation still needs its own suitable independent high-limit protection and power-disconnect arrangements. A relay or SSR can fail mechanically or electrically; commanding OFF does not prove that heater power has stopped.
 
 ## Bring-up checklist
 
 - [ ] Record exact CYD model/revision and verify schematic.
-- [ ] Select exact ESP32-S3 board/module and verify pinout, flash, and PSRAM.
-- [ ] Record kiln supply voltage, frequency, phase/conductor arrangement, and nameplate rating.
-- [ ] Record ratings and wiring topology of all four heater circuits.
+- [ ] Select exact ESP32-S3 board/module and verify pinout.
 - [ ] Identify each probe type, temperature range, construction, and location.
 - [ ] Select and verify one compatible sensor front end per channel.
 - [ ] Decide whether any channel uses RTD rather than thermocouple.
 - [ ] Define zone-to-sensor and zone-to-output mapping.
-- [ ] Select isolated low-voltage output drivers and feedback strategy.
-- [ ] Design independent high-limit and final power isolation.
-- [ ] Document UART pins, grounding, cable, and protection.
-- [ ] Verify power supplies, brownout behavior, fusing, and enclosure.
-- [ ] Test logic with all high-power loads disconnected.
+- [ ] Select external relay/SSR modules (user responsibility).
+- [ ] Confirm each relay module's logic input voltage/current and active polarity.
+- [ ] Implement four protected output interfaces compatible with those inputs.
+- [ ] Decide whether relay-state feedback is available.
+- [ ] Verify outputs remain inactive during reset, boot, brownout, and fault.
+- [ ] Test all four outputs with low-voltage indicator loads before connecting relay modules.
 - [ ] Test sensor open/short, wrong-type, stale, and implausible readings.
-- [ ] Test all four outputs with low-voltage indicator loads.
-- [ ] Verify watchdog, reset, and fault-latch safe-state behavior.
+- [ ] Verify watchdog and fault-latch behavior.
