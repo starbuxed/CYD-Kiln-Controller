@@ -17,8 +17,8 @@ class ControllerLink {
   uint8_t controllerState() const { return controllerState_; }
   uint8_t sensorValidMask() const { return sensorValidMask_; }
   uint8_t outputCommandMask() const { return outputCommandMask_; }
-  int16_t temperatureCentiC(uint8_t channel) const;
-  int16_t setpointCentiC(uint8_t channel) const;
+  int16_t temperatureDeciC(uint8_t channel) const;
+  int16_t setpointDeciC(uint8_t channel) const;
   uint8_t lastAckCommand() const { return lastAckCommand_; }
   uint8_t lastAckResult() const { return lastAckResult_; }
 
