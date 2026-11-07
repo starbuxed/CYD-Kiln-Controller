@@ -1,62 +1,53 @@
 # Safety Requirements and Fault Policy
 
-> **Critical:** This project is not a safety certification. The ESP32-S3 sends four low-voltage ON/OFF commands to external relay/SSR modules selected by the user. ESP32 GPIOs must not directly drive bare relay coils or heater loads. A commanded OFF state does not prove the external relay has opened or that heater power is absent.
+> This is experimental development firmware, not a certified kiln safety controller. Neither ESP32 nor CAN is a substitute for independent kiln-side overtemperature protection, correctly rated power switching, protective devices, and a physical emergency-stop circuit.
 
-## Mandatory controller rules
+## Mandatory safety architecture
 
-1. All four digital output commands default to inactive during reset, boot, brownout, watchdog timeout, malformed command, or loss of valid controller state.
-2. Output polarity is configurable per channel, but the logical inactive state must be defined and externally biased safe during MCU reset/unpowered conditions.
-3. A reboot or restored connection must never automatically resume a firing or restore an ON output.
-4. All CYD/browser commands pass through the dedicated controller's validation and supervisory state machine.
-5. Each temperature channel carries sensor type, validity, freshness, and front-end error information. Invalid, disconnected, wrong-type, implausible, or stale readings are faults.
-6. A sensor fault must disable its associated output and latch/report the fault. Initial commissioning policy: a safety-critical sensor fault disables all four outputs.
-7. Loss of the CYD link must not disable local fault supervision. Initial commissioning policy: all four outputs inactive and a latched link fault.
-8. Firmware updates and configuration writes must not energize outputs.
-9. The UI distinguishes logical command state from verified physical state. Without feedback inputs, show only commanded ON/OFF.
-10. External relay/SSR hardware and kiln-side safety devices are outside this firmware's power-design scope, but must be installed with their own appropriate protection and independent high-limit arrangements.
+1. CYD main and secondary ESP32-S3 each have an independent hardwired shutdown-request interface.
+2. A physical latching emergency-stop directly interrupts the safety-contactor control circuit without either MCU, CAN, Wi-Fi, or browser.
+3. An independent kiln-side high-limit device is mandatory.
+4. The engineered safety circuit must allow either MCU request to de-energize the safety enable path.
+5. Do not connect MCU GPIO outputs together; use separate isolated/interface stages.
+6. MCU requests supplement hardware safety; GPIO is not the sole safety contact.
+7. Neither MCU, CAN software, nor web UI may clear an active physical E-stop or high-limit trip.
+8. Emergency shutdown is software-latched and requires inspection/manual reset after the physical cause is cleared.
+9. Both boards boot with heater-control outputs inactive.
+10. Never auto-restart/resume after reset, brownout, communications loss, or fault.
 
-## Output interface requirements
+## Secondary local safety
 
-- Four independent logical ON/OFF channels.
-- Per-channel active-high/active-low configuration.
-- Defined inactive level established before normal firmware operation.
-- External biasing or equivalent hardware keeps inputs inactive during MCU reset, boot, brownout, and power loss.
-- Suitable protected interface circuitry between ESP32 GPIO and the user's relay module.
-- Never connect a bare relay coil directly to a GPIO.
-- Optional feedback may report an input/auxiliary-contact state, but only independent suitable feedback can support a verified physical-state claim.
+- Monitor every enabled temperature channel, independent of zone mapping.
+- Invalid, stale, disconnected, wrong-type, implausible, or out-of-range data is a fault, not a zero reading.
+- Detect converter faults, excessive rate, sensor disagreement, and local overtemperature.
+- Monitor CAN heartbeat and controller bus-off/error state.
+- Force all four outputs inactive on critical faults and latch.
+- Continue local safety monitoring without CYD.
+- Reject START/RESUME unless all configured interlocks, sensor readiness, outputs, profile, and communication checks pass.
 
-## Fault conditions to detect
+## CYD safety
 
-- Missing, disconnected, wrong-type, or faulty temperature sensor.
-- Stale or implausible temperature data.
-- Zone over-temperature or ramp-limit violation.
-- CYD-to-S3 communication timeout.
-- Invalid, corrupted, or out-of-sequence protocol frame.
-- Unexpected reset, watchdog reset, or brownout.
-- Output command/feedback mismatch, if feedback is provided.
-- Invalid profile, zone mapping, or sensor configuration.
-- Internal task stall or failure to service safety monitoring.
+- Main-board watchdog and CAN heartbeat.
+- Emergency shutdown user command and optional local physical input.
+- Dedicated hardwired shutdown request independent of CAN.
+- Display fault state and distinguish local request from confirmed hardware status.
+- Stale CAN data means link fault and no normal firing controls.
+- Do not present software-requested OFF as proof heater power is disconnected.
 
-## Required fault response
+## CAN faults
 
-The default response for an unresolved safety-critical fault is to command all four outputs inactive and latch the fault. Never clear a critical fault merely because the signal becomes valid again. Recovery requires review, acknowledgement, and a fresh explicit start sequence.
+During firing, treat heartbeat timeout, bus-off, persistent bus errors, malformed safety payloads, stale/duplicate command sequence, and session mismatch as critical. Secondary forces controlled outputs inactive and latches fault. CAN recovery does not authorize restart.
 
-## Output-state terminology
+## Output interface
 
-- **Requested:** desired state from profile/control logic.
-- **Commanded:** logical ON/OFF state applied to the output interface.
-- **Feedback:** state observed by an optional feedback input.
-- **Verified physical state:** only available when suitable independent hardware verifies the actual switched circuit.
+- Four independent ON/OFF command channels.
+- Configurable polarity only after electrical verification.
+- Hardware must keep relay input inactive during MCU reset, boot, brownout, power loss, or disconnected harness.
+- Protected interface matched to external relay/SSR input.
+- Never drive bare relay coils directly from ESP32 GPIO.
+- UI distinguishes command from feedback; absent feedback means unverified.
+- Do not claim firmware OFF can interrupt a failed-closed SSR.
 
-Do not label a commanded state as verified.
+## Bring-up rule
 
-## Commissioning
-
-1. Verify the ESP32-S3 board pin map and output interface schematic.
-2. Test all four outputs with low-voltage indicator loads only.
-3. Verify active-high/active-low behavior for each channel.
-4. Verify outputs remain inactive during reset, boot, brownout, and watchdog fault.
-5. Inject sensor faults, stale data, communications loss, resets, and malformed frames.
-6. Verify all critical faults force the configured inactive output state.
-7. Connect the user's relay modules only after confirming their input voltage/current, polarity, and interface requirements.
-8. Verify external kiln safety equipment independently of firmware before any heating operation.
+Initial testing must use simulation and low-voltage indicator loads only. Keep kiln heating power disconnected until wiring, physical E-stop, independent high-limit, contactor behavior, isolation, grounding, and output interface have been reviewed and tested by a qualified person.
