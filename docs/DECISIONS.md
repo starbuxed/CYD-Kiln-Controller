@@ -4,27 +4,39 @@ This is the working decision log. Open questions remain open until hardware evid
 
 | Topic | Current direction | Status |
 |---|---|---|
-| Main controller | CYD ESP32 | Selected at family level; exact variant TBD |
-| I/O coprocessor | Arduino Pro Micro | Selected at family level; MCU/voltage/clock TBD |
-| Temperature channels | Up to four | Sensor technology/front end TBD |
-| Output channels | Four configurable channels | Driver topology, loads, polarity TBD |
-| Local UI | CYD touchscreen | Display/touch controller and pins TBD |
-| Remote UI | ESP32-hosted web app | Required; implementation TBD |
+| Operator interface | CYD ESP32 | Selected at family level; exact variant TBD |
+| Dedicated kiln controller | ESP32-S3 DevKitC-1 development board | Recommended; exact board/pin map to verify |
+| Legacy Pro Micro | Removed from target architecture | Not recommended for this four-zone design |
+| Alternative controller | RP2040/RP2350 | Technically viable, but not selected |
+| Temperature channels | Four independent channels | User selected |
+| Sensor mix | Per-channel configurable thermocouple types | Assumed meaning of "mixed"; RTD support requires separate front end |
+| Thermocouple front end | One MAX31856-class interface per thermocouple channel | Candidate; module and isolation TBD |
+| RTD front end | MAX31865-class interface if an RTD is required | Optional, not selected |
+| Heater zones | Four independently controlled circuits | User selected |
+| Zone mapping | Zone 1–4 to sensor 1–4 and output 1–4 by default | Proposed; configurable mapping |
+| Outputs | Four isolated low-voltage control outputs | Required; driver and feedback design TBD |
+| Kiln supply | Other / not identified | Open; no voltage/phase/current assumptions |
+| Local UI | CYD touchscreen | Required |
+| Remote UI | CYD-hosted web app | Required |
 | API | Versioned JSON REST + live event transport | Proposed |
-| MCU link | UART with framed, versioned, CRC-protected messages | Proposed |
-| Fault on MCU-link loss | Controlled outputs to safe state; latch fault | Required behavior |
+| Inter-processor link | CYD-to-S3 UART with framed, versioned, CRC-protected messages | Proposed |
+| Local control authority | Dedicated ESP32-S3 | Proposed architecture |
+| Fault on sensor/link failure | Safe output state and latched fault | Required behavior |
 | Restart after interruption | Never resume automatically | Required behavior |
-| Independent high limit | Hardware protection independent of MCUs | Required; design TBD |
-| Profiles | Versioned ramp/soak JSON | Proposed |
+| Independent high limit | Hardware protection independent of both MCUs | Required; design TBD |
+| Profiles | Versioned ramp/soak profiles with four zone targets/limits | Proposed |
 
-## Decisions required before firmware pin-level implementation
+## Decisions required before pin-level or power-stage implementation
 
-1. Exact CYD board model, revision, display controller, touch controller, flash/PSRAM.
-2. Exact Pro Micro MCU, voltage, clock, bootloader, and serial pin availability.
-3. Thermocouple/RTD type and front-end module for each of the four inputs.
-4. What each of the four outputs controls and the electrical ratings of those loads.
-5. Driver/contactor topology, feedback contacts, default polarity, and isolation.
-6. Independent high-limit and final power-disconnect design.
-7. Firing pause/stop/power-failure behavior for the selected kiln.
+1. Exact CYD board model/revision, display controller, touch controller, flash/PSRAM.
+2. Exact ESP32-S3 development board/module, pin map, flash/PSRAM, and power arrangement.
+3. Exact thermocouple type, probe model, range, and installation location for each channel.
+4. Whether any channel is RTD (PT100/PT1000) rather than thermocouple.
+5. Exact front-end modules and whether isolation is required for each sensor channel.
+6. Kiln nameplate voltage, frequency, phase/conductor arrangement, total current/power, and existing wiring diagram.
+7. Electrical ratings and grouping of each of the four heater circuits.
+8. Driver/SSR/contactor topology, default polarity, feedback, and independent disconnect.
+9. Independent high-limit device(s), sensor placement, and final power-disconnect design.
+10. Firing pause/stop/power-failure behavior for the selected kiln.
 
-A change to any hardware-dependent decision should be recorded here and reflected in the hardware documentation and tests.
+A change to any hardware-dependent decision must be reflected in the hardware documentation, configuration schema, tests, and wiring drawings.
