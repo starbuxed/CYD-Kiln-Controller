@@ -11,13 +11,22 @@ This firmware target is the local control processor. The CYD ESP32 remains the t
 - Safe inactive outputs during boot, reset, brownout, watchdog timeout, and latched faults.
 - Framed UART link to the CYD operator interface.
 
+## Implemented controller foundation
+
+- Four-channel relay output abstraction with per-channel polarity and validation.
+- UART protocol server using the shared framing and CRC implementation.
+- Periodic controller heartbeat and status telemetry.
+- Typed command handling with acknowledgements and stale-sequence rejection.
+- STOP always commands all configured outputs inactive.
+- START and RESUME remain rejected until sensors, profiles, and safety interlocks are implemented.
+
 ## Output scope
 
 The firmware issues four logical relay-control commands. The user selects and supplies the external relay/SSR equipment. The controller's physical output interface must be matched to the external module's control-input voltage, current, polarity, and isolation requirements.
 
-Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. Use appropriate protected/isolated interface circuitry. Do not assume that a commanded OFF state proves that the external relay or heater power is physically off.
+Do not connect bare relay coils or heater loads directly to ESP32 GPIO pins. Use appropriate protected/isolated interface circuitry. A commanded OFF state does not prove the external relay or heater power is physically off.
 
-The four-channel output driver is implemented in `src/relay_outputs.cpp`. It validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins to their logical inactive level before setting them as outputs. All channels are currently disabled and unassigned in `main.cpp`; no relay can be energized by the current application.
+The four-channel output driver is implemented in src/relay_outputs.cpp. It validates enabled pin assignments, rejects duplicate GPIO assignments, supports per-channel active-high/active-low polarity, and initializes configured pins to their logical inactive level. All channels are currently disabled and unassigned in main.cpp; no relay can be energized by the current application.
 
 No GPIO pin assignments are committed until the exact ESP32-S3 board and output-interface hardware are selected. External biasing must keep all output interfaces inactive while the MCU is reset, unpowered, or booting.
 
@@ -29,4 +38,4 @@ From this directory:
 pio run -e controller_s3_devkitc1
 ```
 
-The current application remains non-firing. Temperature acquisition, zone control, communications, and safety supervision are not yet implemented.
+The current application remains non-firing. Temperature acquisition, zone control, profile execution, fault manager, and complete safety supervision are not yet implemented.
