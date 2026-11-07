@@ -1,0 +1,32 @@
+# PlatformIO
+.pio/
+.platformio/
+.vscode/
+.cache/
+
+# Arduino IDE
+build/
+*.hex
+*.elf
+*.map
+*.eep
+*.lss
+
+# Local secrets and settings
+.env
+.env.*
+!.env.example
+secrets.h
+config.local.json
+
+# Build and test artifacts
+dist/
+coverage/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# OS/editor
+.DS_Store
+Thumbs.db
+*.swp
