@@ -1,82 +1,65 @@
-# CYD ↔ Dedicated ESP32-S3 Communications Protocol
-
-The CYD is the operator interface. The dedicated ESP32-S3 is authoritative for sensor acquisition, zone control, output requests, and local safety decisions.
+# CYD ↔ ESP32-S3 CAN Protocol
 
 ## Transport
 
-The initial transport is framed hardware UART at 115200 baud, 8-N-1, using 3.3 V logic. Exact pins, cable routing, grounding, and any required isolation must be verified against the actual board revisions. For a noisy kiln environment or long cable, evaluate isolated RS-485.
+Inter-controller link: classic CAN 2.0A, standard 11-bit identifiers, using ESP32 TWAI and one compatible external CAN transceiver on each board. Initial target bitrate is 500 kbit/s, subject to validation against cable length, topology, transceiver, and EMI conditions.
 
-The default classic 2.8-inch CYD profile uses GPIO27 TX / GPIO22 RX. The ESP32-S3-DevKitC-1 PlatformIO target uses GPIO17 RX / GPIO18 TX. Override the S3 pin macros for a different board or wiring harness.
+The TWAI peripheral is not a physical transceiver. Both boards require an external transceiver. Exact TX/RX GPIO assignments remain unset until their board revisions and pin availability are verified.
 
-## Frame format
+CANH/CANL use twisted pair; terminate only the two physical ends of a linear bus with 120 ohms. Keep stubs short. Choose reference grounding or galvanic isolation intentionally. Emergency shutdown is separate hardwired circuitry.
 
-| Field | Bytes | Description |
-|---|---:|---|
-| Start of frame | 2 | A5 5A |
-| Version | 1 | Protocol version 1 |
-| Message type | 1 | Typed message identifier |
-| Sequence | 2 | Little-endian sequence number |
-| Payload length | 1 | 0–32 bytes |
-| Payload | 0–32 | Message-specific data |
-| CRC | 2 | CRC-16/CCITT over version through payload |
+## CAN identifiers
 
-The shared implementation is shared/protocol/kiln_protocol.h. Frames with invalid CRC, unsupported version, or invalid message payload length are ignored or rejected. Commands use monotonically increasing sequence numbers; the S3 rejects duplicate or stale command sequences.
+Lower standard identifiers have higher arbitration priority.
 
-## Message types implemented
+| ID | Name | Direction | Purpose |
+|---:|---|---|---|
+| 0x080 | HARD_STATUS | S3 → CYD | Fast state/fault/output summary |
+| 0x081 | TEMPERATURES_0_1 | S3 → CYD | Channels 0 and 1: signed deci-C and status |
+| 0x082 | TEMPERATURES_2_3 | S3 → CYD | Channels 2 and 3: signed deci-C and status |
+| 0x090 | HEARTBEAT_CYD | CYD → S3 | Main heartbeat and session |
+| 0x091 | HEARTBEAT_S3 | S3 → CYD | Secondary heartbeat, state, safety flags |
+| 0x100 | OPERATOR_COMMAND | CYD → S3 | Typed command; never raw GPIO |
+| 0x101 | COMMAND_ACK | S3 → CYD | Accepted/rejected result |
+| 0x110 | PROFILE_BEGIN | CYD → S3 | Start staged transfer |
+| 0x111 | PROFILE_SEGMENT | CYD → S3 | Segment fragment |
+| 0x112 | PROFILE_COMMIT | CYD → S3 | Validate and install staged profile |
+| 0x120 | ZONE_CONFIG | CYD → S3 | Validated zone settings |
+| 0x121 | SENSOR_CONFIG | CYD → S3 | Channel type/offset/mode |
+| 0x122 | SAFETY_CONFIG | CYD → S3 | Bounded safety config while idle |
+| 0x130 | GET_STATUS | CYD → S3 | Request extended status |
+| 0x131 | EXTENDED_STATUS | S3 → CYD | Diagnostics |
+| 0x140 | EVENT | S3 → CYD | Fault/transition event |
+| 0x150 | TIME_SYNC | CYD → S3 | Wall-clock sync; not safety-critical |
 
-| Type | ID | Direction | Payload |
-|---|---:|---|---|
-| HELLO | 0x01 | CYD → S3 | Protocol version byte |
-| HEARTBEAT | 0x02 | Both | CYD: uptime u32; S3: uptime u32 + state byte |
-| STATUS | 0x03 | S3 → CYD | Fixed 29-byte snapshot |
-| ACK | 0x05 | S3 → CYD | Command byte + result byte |
-| COMMAND | 0x10 | CYD → S3 | One command byte |
-| GET_STATUS | 0x11 | CYD → S3 | Empty |
-| PROFILE_BEGIN | 0x20 | CYD → S3 | Segment count byte |
-| PROFILE_SEGMENT | 0x21 | CYD → S3 | Index + target deci-C + ramp deci-C/hour + hold seconds u32 |
-| PROFILE_COMMIT | 0x22 | CYD → S3 | Empty; validates and installs staged profile |
-| ZONE_CONFIG | 0x23 | CYD → S3 | Zone + hysteresis deci-C + min-on ms + min-off ms + setpoint offset deci-C |
-| SENSOR_CONFIG | 0x24 | CYD → S3 | Channel + thermocouple type + calibration offset deci-C |
-| SENSOR_MODE_CONFIG | 0x26 | CYD → S3 | Channel + operating mode (0=Off, 1=Log only (including safety), 2=Log and control, 3=Log and safety) |
-| SAFETY_CONFIG | 0x25 | CYD → S3 | Maximum allowed temperature deci-C u16/i16 |
+Classic CAN payload is limited to 8 bytes. Multi-frame transfers require transaction ID, fragment index/count, bounded total size, timeout, and CRC at assembled-message layer. Partial transfer must never be actionable.
 
-All multibyte integers are little-endian. Thermocouple type IDs are K=0, J=1, N=2, R=3, S=4, T=5, E=6, B=7.
+## Message safety
 
-## Command IDs
+- Validate exact DLC for every identifier.
+- Include sequence counters and a boot/session identifier for commands/heartbeats.
+- Reject duplicate, stale, malformed, unsupported, or out-of-range commands.
+- Commands are requests, never direct output writes.
+- Accept configuration only while safely idle and outputs inactive.
+- Stage and atomically commit profile/config transfers only after full validation.
+- Missing CYD heartbeat during firing causes S3 outputs inactive and a latched link fault.
+- Reconnection never replays commands.
+- CAN bus-off or persistent error state is a fault; S3 outputs go inactive.
+- Fault/status traffic has higher priority than ordinary profile transfers.
+- The separate hardwired shutdown path is the emergency-stop mechanism; CAN is not.
 
-| Command | ID | Current behavior |
-|---|---:|---|
-| START | 0x01 | Starts only when profile, four zone configs, four valid PID-enabled sensors, all safety-enabled sensors valid, host link, and all four output channels are ready |
-| PAUSE | 0x02 | Accepted only while FIRING; forces outputs inactive |
-| RESUME | 0x03 | Resumes only from PAUSED after sensor and host-link checks |
-| STOP | 0x04 | Forces all outputs inactive and returns to IDLE unless fault-latched |
-| ACK_FAULT | 0x05 | Clears a latched fault only when all Log and control / Log and safety sensors are valid and below the safety limit, and host link is healthy |
+## Numeric encoding
 
-The browser and CYD must never send raw GPIO values. The S3 validates typed requests and owns the controller state machine. Configuration is accepted only while IDLE. Profiles are staged by index and installed only after every segment is received and the complete profile validates. Zone, sensor, and safety settings are individually validated. START and RESUME now enter the local control core only when a complete profile, four zone configurations, all four valid PID-enabled sensor readings, all configured Log and safety sensors valid, a healthy host link, and all four configured relay outputs are present. The current hardware build has no sensor driver or enabled relay pin map, so these checks intentionally keep firing blocked.
+All integers little-endian. Temperatures use signed deci-degrees Celsius. Every sensor value is paired with validity/fault status. Zero is not a representation for an invalid sensor.
 
-## Status payload (29 bytes)
+## Heartbeats
 
-| Offset | Size | Meaning |
-|---:|---:|---|
-| 0 | 1 | Controller state |
-| 1 | 2 | Latched safety fault flags |
-| 3 | 1 | Sensor-valid bitmask |
-| 4 | 1 | Commanded output bitmask |
-| 5 | 8 | Four signed temperatures, deci-degrees C |
-| 13 | 8 | Four signed setpoints, deci-degrees C |
-| 21 | 4 | Per-channel sensor fault codes (see sensor manager enum) |
-| 25 | 4 | Per-channel operating modes: 0=Off, 1=Log only, 2=Log and control (including safety), 3=Log and safety |
+Both nodes transmit at 5–10 Hz. S3 monitors CYD heartbeat. A timeout while firing, paused, or armed forces outputs inactive and latches a communications fault. Boot requires a fresh session handshake; firing requires a deliberate new operator start.
 
-Sensor fault codes are: 0=OK, 1=open circuit, 2=short (reserved for front ends that report it), 3=conversion/electrical fault, 4=stale sample, 5=out of range, 6=implausible rate, 7=not configured. A zero sensor-valid mask means no valid temperature channels are currently available. Zero temperature values are placeholders, not measured ambient readings. Output bits describe logical commands only, not verified physical relay state.
+## Shutdown distinction
 
-## Heartbeats and loss behavior
+Software STOP/FAULT messages provide state and diagnostics only. Each ESP32 has a separate shutdown-request output/interface wired to an engineered fail-safe circuit. A physical latching E-stop and independent high-limit interrupt the safety-contactor path without firmware. No CAN ID or touchscreen command may override an active hardware trip.
 
-Both processors send heartbeats every 500 ms. The S3 monitors the host heartbeat. If a previously established host heartbeat becomes stale while the controller is FIRING, the S3 commands all outputs inactive and enters FAULT. The S3 must continue local safety supervision independently of the CYD.
+## Compatibility
 
-The S3 contains a hardware-independent profile engine, four zone controllers, a sensor-validation abstraction, and a local safety manager. Typed profile, zone, sensor, and safety configuration messages are implemented. START and RESUME are wired to the local control core but remain NOT_READY until a real sensor front-end, enabled output map, and complete end-to-end hardware validation are present. Reconnection never automatically replays a command.
-
-## Current implementation boundary
-
-Implemented: shared frame encoding/parsing, CRC, sequence comparison, CYD UART client and configuration senders, S3 UART server, heartbeat exchange, status snapshots, typed configuration staging, command acknowledgements, stale command rejection, and local control-core command handling.
-
-Not yet implemented: physical SPI/CS pin configuration and sensor hardware validation, enabled physical relay GPIO mapping, CYD UI, and end-to-end firing validation.
+The prior UART protocol is superseded as the intended inter-board transport. UART may remain as a diagnostic console only; it is not the kiln control/safety link.
