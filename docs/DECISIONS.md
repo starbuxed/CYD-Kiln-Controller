@@ -1,28 +1,25 @@
 # Architecture Decisions
 
-| Topic | Current direction | Status |
+| Topic | Decision | Status |
 |---|---|---|
-| Operator interface | CYD ESP32 | Selected; exact revision TBD |
-| Dedicated controller | ESP32-S3 DevKitC-1 | Recommended; pin map to verify |
-| Temperature channels | Four independent channels | User selected |
-| Sensor mix | Per-channel configurable thermocouple types | Assumed meaning of "mixed"; RTD requires separate front end |
-| Thermocouple front end | One MAX31856-class interface per channel | Candidate; verify module |
-| Heater zones | Four independent zones | User selected |
-| Output interface | Four independent digital ON/OFF commands | Selected behavior |
-| External relay/SSR hardware | User selects and supplies it | Outside firmware power-stage scope |
-| Output polarity | Configurable active-high/active-low per channel | Required |
-| Output electrical interface | Protected/isolated low-voltage interface matched to relay module | Exact interface depends on module input |
-| Output feedback | Optional, if external hardware provides it | Not assumed |
-| Kiln power supply | Not required to implement logical ON/OFF firmware | User handles external power equipment |
-| Local UI | CYD touchscreen | Required |
-| Remote UI | CYD-hosted web app | Required |
-| Inter-controller link | Framed, versioned, CRC-protected UART | Proposed |
-| Local control authority | Dedicated ESP32-S3 | Selected architecture |
-| Fault response | Outputs inactive and fault latched | Required |
-| Restart after interruption | Never resume automatically | Required |
+| Main operator interface | CYD ESP32 | Selected; exact revision TBD |
+| Secondary controller | ESP32-S3 development board | Selected; exact model TBD |
+| Temperature inputs | Four independent channels | Selected |
+| Thermocouple front ends | Four MAX31856 modules | Selected direction; exact modules/probes TBD |
+| Output channels | Four digital ON/OFF outputs | Selected |
+| External relay/SSR/power stage | User-selected protected equipment | Electrical details TBD |
+| Main/secondary link | Classic CAN 2.0A with external transceiver per board | Selected; pins/transceivers/cable TBD |
+| Initial bitrate | 500 kbit/s | Validate against physical topology |
+| CYD responsibilities | UI, web, Wi-Fi, SD, profiles, history | Selected |
+| Secondary responsibilities | Sensors, local control, outputs, local safety | Selected |
+| Independent shutdown | Separate hardwired request from each MCU plus physical E-stop | Required; schematic/verification pending |
+| Independent high-limit | Kiln-side hardware device | Required |
+| Output polarity | Configurable after electrical confirmation | Required |
+| Restart after interruption | Never auto-resume | Required |
+| Exact pin maps | No assumptions | Pending board identification |
 
-## Remaining controller-interface detail
+## Safety design boundary
 
-The firmware can be developed against a generic four-channel digital output abstraction without knowing kiln mains voltage or heater current. Before selecting the physical output-interface circuit or connecting a relay module, record that module's input voltage/current, active polarity, isolation, and whether its input is logic-level or a bare relay coil.
+CAN is the data/control transport, not the emergency-stop circuit. Each MCU requires its own external CAN transceiver. Each MCU also requires a separate shutdown request interface to a fail-safe hardware safety circuit. A physical latching E-stop and independent high-limit must interrupt the safety-contactor path without relying on either controller.
 
-Exact sensor probes/front ends, CYD revision, ESP32-S3 pin map, and relay-module input interface remain to be verified.
+No GPIO mapping should be enabled until exact boards, schematics, transceivers, sensor modules, relay input interfaces, and shutdown circuit have been confirmed.
