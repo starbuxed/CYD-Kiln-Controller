@@ -28,6 +28,9 @@ class ControllerLink {
   uint16_t faultFlags() const { return faultFlags_; }
   uint8_t sensorValidMask() const { return sensorValidMask_; }
   uint8_t outputCommandMask() const { return outputCommandMask_; }
+  uint8_t sensorFault(uint8_t channel) const {
+    return channel < 4 ? sensorFaults_[channel] : 0xFF;
+  }
   int16_t temperatureDeciC(uint8_t channel) const;
   int16_t setpointDeciC(uint8_t channel) const;
   uint8_t lastAckCommand() const { return lastAckCommand_; }
@@ -50,6 +53,7 @@ class ControllerLink {
   uint8_t outputCommandMask_ = 0;
   int16_t temperatures_[4] = {};
   int16_t setpoints_[4] = {};
+  uint8_t sensorFaults_[4] = {};
   uint8_t lastAckCommand_ = 0;
   uint8_t lastAckResult_ = kiln::RESULT_UNSUPPORTED;
 };
