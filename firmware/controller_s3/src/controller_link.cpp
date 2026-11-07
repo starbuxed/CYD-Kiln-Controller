@@ -80,24 +80,46 @@ void ControllerLink::applyCommand(uint8_t command, uint8_t& result) {
   result = kiln::RESULT_INVALID_STATE;
   switch (command) {
     case kiln::CMD_START:
-      // Start remains blocked until the real sensor adapter, profile transfer,
-      // output mapping, and end-to-end validation are integrated.
-      result = (controllerState == kiln::STATE_FAULT)
-                 ? kiln::RESULT_FAULT_LATCHED : kiln::RESULT_NOT_READY;
+      if (controllerState == kiln::STATE_FAULT) {
+        result = kiln::RESULT_FAULT_LATCHED;
+      } else {
+        bool outputsReady = true;
+        for (uint8_t i = 0; i < kiln::RELAY_OUTPUT_COUNT; ++i)
+          if (!relayOutputs.isConfigured(i)) outputsReady = false;
+        if (controllerState == kiln::STATE_IDLE && outputsReady &&
+            controlCore.start(millis(), kilnTemperaturesC,
+                              sensorManager.validMask(), hostLinkHealthy())) {
+          controllerState = kiln::STATE_FIRING;
+          result = kiln::RESULT_OK;
+        } else {
+          result = kiln::RESULT_NOT_READY;
+        }
+      }
       break;
 
     case kiln::CMD_PAUSE:
       if (controllerState == kiln::STATE_FIRING) {
-        controlCore.pause(millis());
-        relayOutputs.allInactive();
-        controllerState = kiln::STATE_PAUSED;
-        result = kiln::RESULT_OK;
+        if (controlCore.pause(millis())) {
+          relayOutputs.allInactive();
+          controllerState = kiln::STATE_PAUSED;
+          result = kiln::RESULT_OK;
+        } else {
+          result = kiln::RESULT_NOT_READY;
+        }
       }
       break;
 
     case kiln::CMD_RESUME:
-      result = (controllerState == kiln::STATE_FAULT)
-                 ? kiln::RESULT_FAULT_LATCHED : kiln::RESULT_NOT_READY;
+      if (controllerState == kiln::STATE_FAULT) {
+        result = kiln::RESULT_FAULT_LATCHED;
+      } else if (controllerState == kiln::STATE_PAUSED &&
+                 controlCore.resume(millis(), kilnTemperaturesC,
+                                    sensorManager.validMask(), hostLinkHealthy())) {
+        controllerState = kiln::STATE_FIRING;
+        result = kiln::RESULT_OK;
+      } else {
+        result = kiln::RESULT_NOT_READY;
+      }
       break;
 
     case kiln::CMD_STOP:
@@ -142,6 +164,90 @@ void ControllerLink::handleCommand(const kiln::Frame& frame) {
   sendAck(frame.sequence, frame.payload[0], result);
 }
 
+bool ControllerLink::acceptHostSequence(const kiln::Frame& frame) {
+  if (commandSequenceSeen_ &&
+      !kiln::sequenceIsNewer(frame.sequence, lastCommandSequence_)) return false;
+  commandSequenceSeen_ = true;
+  lastCommandSequence_ = frame.sequence;
+  return true;
+}
+
+void ControllerLink::handleConfiguration(const kiln::Frame& frame) {
+  if (controllerState != kiln::STATE_IDLE) {
+    sendAck(frame.sequence, frame.type, kiln::RESULT_INVALID_STATE);
+    return;
+  }
+  if (!acceptHostSequence(frame)) {
+    sendAck(frame.sequence, frame.type, kiln::RESULT_BAD_SEQUENCE);
+    return;
+  }
+  uint8_t result = kiln::RESULT_BAD_LENGTH;
+  switch (frame.type) {
+    case kiln::MSG_PROFILE_BEGIN:
+      if (frame.length == 1 && frame.payload[0] > 0 &&
+          frame.payload[0] <= kiln::MAX_PROFILE_SEGMENTS) {
+        stagedProfileCount_ = frame.payload[0];
+        stagedProfileMask_ = 0;
+        profileStaging_ = true;
+        result = kiln::RESULT_OK;
+      }
+      break;
+    case kiln::MSG_PROFILE_SEGMENT:
+      if (frame.length == 9 && profileStaging_) {
+        const uint8_t index = frame.payload[0];
+        if (index < stagedProfileCount_) {
+          stagedProfile_[index].targetC = kiln::getI16(frame.payload + 1) / 10.0f;
+          stagedProfile_[index].rampCPerHour = kiln::getI16(frame.payload + 3) / 10.0f;
+          stagedProfile_[index].holdSeconds = kiln::getU32(frame.payload + 5);
+          stagedProfileMask_ |= (1UL << index);
+          result = kiln::RESULT_OK;
+        } else result = kiln::RESULT_BAD_LENGTH;
+      }
+      break;
+    case kiln::MSG_PROFILE_COMMIT: {
+      const uint32_t required = stagedProfileCount_ == 32 ? 0xFFFFFFFFUL :
+                                ((1UL << stagedProfileCount_) - 1UL);
+      if (frame.length == 0 && profileStaging_ &&
+          stagedProfileMask_ == required &&
+          controlCore.configureProfile(stagedProfile_, stagedProfileCount_)) {
+        profileStaging_ = false;
+        result = kiln::RESULT_OK;
+      } else if (frame.length == 0) result = kiln::RESULT_NOT_READY;
+      break;
+    }
+    case kiln::MSG_ZONE_CONFIG:
+      if (frame.length == 13 && frame.payload[0] < 4) {
+        kiln::ZoneRuntimeConfig cfg;
+        cfg.control.hysteresisC = kiln::getI16(frame.payload + 1) / 10.0f;
+        cfg.control.minimumOnMs = kiln::getU32(frame.payload + 3);
+        cfg.control.minimumOffMs = kiln::getU32(frame.payload + 7);
+        cfg.setpointOffsetC = kiln::getI16(frame.payload + 11) / 10.0f;
+        result = controlCore.configureZone(frame.payload[0], cfg)
+                   ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
+      }
+      break;
+    case kiln::MSG_SENSOR_CONFIG:
+      if (frame.length == 4 && frame.payload[0] < 4 && frame.payload[1] <= kiln::TC_B) {
+        const float offset = kiln::getI16(frame.payload + 2) / 10.0f;
+        result = sensorManager.configure(frame.payload[0],
+                    static_cast<kiln::ThermocoupleType>(frame.payload[1]), offset)
+                   ? kiln::RESULT_OK : kiln::RESULT_BAD_LENGTH;
+      }
+      break;
+    case kiln::MSG_SAFETY_CONFIG:
+      if (frame.length == 2) {
+        const float maximum = kiln::getI16(frame.payload) / 10.0f;
+        result = controlCore.setMaximumAllowedTemperatureC(maximum)
+                   ? kiln::RESULT_OK : kiln::RESULT_NOT_READY;
+      }
+      break;
+    default:
+      result = kiln::RESULT_UNSUPPORTED;
+      break;
+  }
+  sendAck(frame.sequence, frame.type, result);
+}
+
 void ControllerLink::handleFrame(const kiln::Frame& frame) {
   if (frame.version != kiln::PROTOCOL_VERSION) return;
 
@@ -160,6 +266,14 @@ void ControllerLink::handleFrame(const kiln::Frame& frame) {
       break;
     case kiln::MSG_COMMAND:
       handleCommand(frame);
+      break;
+    case kiln::MSG_PROFILE_BEGIN:
+    case kiln::MSG_PROFILE_SEGMENT:
+    case kiln::MSG_PROFILE_COMMIT:
+    case kiln::MSG_ZONE_CONFIG:
+    case kiln::MSG_SENSOR_CONFIG:
+    case kiln::MSG_SAFETY_CONFIG:
+      handleConfiguration(frame);
       break;
     default:
       break;
