@@ -4,14 +4,12 @@
 
 int main() {
   kiln::Frame tx;
-  tx.version = kiln::PROTOCOL_VERSION;
-  tx.type = kiln::MSG_HOST_HEARTBEAT;
+  tx.type = kiln::MSG_HEARTBEAT;
   tx.sequence = 0x1234;
-  tx.length = 2;
-  tx.payload[0] = 0xA5;
-  tx.payload[1] = 0x5A;
+  tx.length = 4;
+  kiln::putU32(tx.payload, 0x78563412UL);
 
-  uint8_t wire[kiln::FRAME_OVERHEAD + kiln::MAX_PAYLOAD] = {};
+  uint8_t wire[kiln::MAX_FRAME_SIZE] = {};
   const size_t wireLength = kiln::encode(tx, wire, sizeof(wire));
   assert(wireLength == kiln::FRAME_OVERHEAD + tx.length);
 
@@ -22,14 +20,12 @@ int main() {
     decoded = parser.feed(wire[i], rx) || decoded;
 
   assert(decoded);
-  assert(rx.version == tx.version);
+  assert(rx.version == kiln::PROTOCOL_VERSION);
   assert(rx.type == tx.type);
   assert(rx.sequence == tx.sequence);
   assert(rx.length == tx.length);
-  assert(rx.payload[0] == tx.payload[0]);
-  assert(rx.payload[1] == tx.payload[1]);
+  assert(kiln::getU32(rx.payload) == 0x78563412UL);
 
-  // Corrupt one payload byte: parser must not emit a valid frame.
   wire[7] ^= 0x01;
   parser.reset();
   decoded = false;
@@ -37,8 +33,16 @@ int main() {
     decoded = parser.feed(wire[i], rx) || decoded;
   assert(!decoded);
 
-  // Oversized payloads must be rejected by the encoder.
   tx.length = kiln::MAX_PAYLOAD + 1;
   assert(kiln::encode(tx, wire, sizeof(wire)) == 0);
+
+  assert(kiln::sequenceIsNewer(11, 10));
+  assert(!kiln::sequenceIsNewer(10, 10));
+  assert(!kiln::sequenceIsNewer(9, 10));
+  assert(kiln::sequenceIsNewer(0, 65535));
+
+  uint8_t tempBytes[2];
+  kiln::putI16(tempBytes, -1234);
+  assert(kiln::getI16(tempBytes) == -1234);
   return 0;
 }
