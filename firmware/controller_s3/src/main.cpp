@@ -79,7 +79,7 @@ void loop() {
     controlCore.update(millis(), kilnTemperaturesC,
                        sensorManager.validMask(),
 #if KILN_S3_UART_RX_PIN >= 0 && KILN_S3_UART_TX_PIN >= 0
-                       true
+                       false
 #else
                        false
 #endif
