@@ -1,22 +1,30 @@
 # Browser Application
 
-The production web application is served directly from the ESP32. It must not require a cloud service, remote JavaScript CDN, or external API to perform local control and monitoring.
+The CYD now starts a local WPA2 access point and serves a self-contained dashboard from the ESP32. The current UI is embedded in \`firmware/esp32/src/web_app.cpp\`; it has no remote JavaScript, CSS, chart, or API dependencies.
 
-## Planned screens
+## Current pages
 
-- Dashboard: four temperature channels, four outputs, controller state, profile progress, alarms, and live chart.
-- Profile library and ramp/soak editor.
-- Firing history and export.
-- Sensor/output configuration.
-- Network and security settings.
-- Diagnostics.
+- Dashboard with four sensor readings, validity/fault state, CAN status, output command mask, alerts, and live temperature graph.
+- JSON ramp/soak profile upload to the S3.
+- Firing-summary history and CSV export.
+- Alert/event ledger and configurable dashboard-warning rules.
+- Scheduled firing reminders (due notification only; never automatic start).
+- Estimated energy/cost using user-configured zone watts and tariff.
+- Isolated four-zone simulation preview.
+- PID-term diagnostics and offline step-response recommendation.
+
+## Access and security
+
+At boot the serial monitor reports the generated SSID/password and \`http://192.168.4.1/\`. The mDNS alias \`kiln-controller.local\` is enabled where supported. HTTP Basic Authentication uses username \`admin\` and the unique AP password. Write endpoints require a CSRF header.
+
+The initial web service is intended for its local WPA2 AP, not public-network exposure. TLS and station-mode Wi-Fi onboarding are not yet implemented.
 
 ## Implementation constraints
 
-- Responsive phone/tablet/desktop layout.
-- Clearly display stale data and server disconnection.
-- Fetch an authoritative status snapshot after every reconnect.
-- Never replay queued start, resume, or output commands.
-- Start/resume/stop actions are requests to the ESP32 state machine, never direct GPIO operations.
-- Bundle all assets locally so the interface works without internet access.
-- State-changing requests require authentication, CSRF protection as appropriate, validation, and audit events.
+- The browser is display/cache only; the ESP32-S3 owns firing state, safety, and output switching.
+- On reconnect, the browser fetches authoritative status and never replays a start/resume command.
+- Simulated temperatures are not mixed into live controller samples and do not feed the S3.
+- Scheduling creates reminders only. No reboot or schedule event can auto-resume a firing.
+- Energy is an estimate, not a meter; configure actual zone wattage and energy rate.
+- PID diagnostics/tuning recommendations do not update active S3 control gains. The current zone controller is hysteresis-based.
+- Continue using simulated sensors and low-voltage indicator loads only until hardware and independent safety review are complete.
