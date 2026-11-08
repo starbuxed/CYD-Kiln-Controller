@@ -4,7 +4,7 @@
 namespace kiln {
 namespace features {
 
-static constexpr uint16_t TELEMETRY_CAPACITY = 240;
+static constexpr uint16_t TELEMETRY_CAPACITY = 1800;
 static constexpr uint8_t FIRING_HISTORY_CAPACITY = 12;
 static constexpr uint8_t SCHEDULE_CAPACITY = 8;
 static constexpr uint8_t ALERT_CAPACITY = 24;
@@ -129,7 +129,8 @@ enum AlertCode : uint8_t {
   ALERT_RUN_STARTED = 6,
   ALERT_RUN_COMPLETED = 7,
   ALERT_RUN_STOPPED = 8,
-  ALERT_SCHEDULE_DUE = 9
+  ALERT_SCHEDULE_DUE = 9,
+  ALERT_TEMP_WARNING = 10
 };
 
 struct AlertEvent {
