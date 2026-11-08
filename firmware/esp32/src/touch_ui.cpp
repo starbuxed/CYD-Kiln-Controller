@@ -14,9 +14,9 @@ namespace {
 constexpr int16_t W=320, H=240, NAV_Y=210;
 constexpr int16_t TCS=Cyd28ClassicPins::TOUCH_CS, TIRQ=Cyd28ClassicPins::TOUCH_IRQ;
 constexpr int16_t TSCLK=Cyd28ClassicPins::TOUCH_CLK, TMISO=Cyd28ClassicPins::TOUCH_MISO;
-constexpr int16_t TMOSI=Cyd28ClassicPins::TOUCH_MOSI, BACKLIGHT=Cyd28ClassicPins::TFT_BACKLIGHT;
+constexpr int16_t TMOSI=Cyd28ClassicPins::TOUCH_MOSI, BACKLIGHT=Cyd28ClassicPins::DISPLAY_BACKLIGHT;
 constexpr uint16_t BG=0x1082, PANEL=0x2124, PANEL2=0x2945, MUTED=0xA514;
-constexpr uint16_t ACCENT=0x07FF, GOOD=0x3666, WARN=0xFD20, BAD=0xD104, DISABLED=0x4208;
+constexpr uint16_t ACCENT=0x07FF, GOOD=0x3666, WARN=0xFD20, BAD=0xD104, COLOR_DISABLED=0x4208;
 TFT_eSPI tft;
 SPIClass touchBus(HSPI);
 XPT2046_Touchscreen touch(TCS,TIRQ);
@@ -86,7 +86,7 @@ void TouchUi::update() {
 }
 
 void TouchUi::drawButton(int x,int y,int w,int h,const char* label,uint16_t fill,bool enabled) {
-  const uint16_t c=enabled?fill:DISABLED;
+  const uint16_t c=enabled?fill:COLOR_DISABLED;
   tft.fillRoundRect(x,y,w,h,6,c);
   tft.drawRoundRect(x,y,w,h,6,enabled?MUTED:PANEL2);
   tft.setTextDatum(MC_DATUM);
@@ -309,13 +309,13 @@ void TouchUi::handleTap(int x,int y) {
         if(x>255&&selectedSegment_+1<profileCount_) ++selectedSegment_;
       } else if(y>=88&&y<=119) {
         int16_t& v=profile_[selectedSegment_].targetDeciC;
-        v=static_cast<int16_t>(constrain(v+(x>=250?250:-250),0,18000)); profileUploaded_=false;
+        v=static_cast<int16_t>(constrain(v+(x>=265?250:-250),0,18000)); profileUploaded_=false;
       } else if(y>=121&&y<=151) {
         int16_t& v=profile_[selectedSegment_].rampDeciCPerHour;
-        v=static_cast<int16_t>(constrain(v+(x>=250?50:-50),10,6000)); profileUploaded_=false;
+        v=static_cast<int16_t>(constrain(v+(x>=265?50:-50),10,6000)); profileUploaded_=false;
       } else if(y>=154&&y<=184) {
         uint32_t& v=profile_[selectedSegment_].holdSeconds;
-        if(x>=250) v=(v<=86100UL)?v+300UL:86400UL; else v=v>=300UL?v-300UL:0UL;
+        if(x>=265) v=(v<=86100UL)?v+300UL:86400UL; else v=v>=300UL?v-300UL:0UL;
         profileUploaded_=false;
       } else if(y>=184&&y<=208) {
         if(x<82&&profileCount_<4) {
