@@ -6,20 +6,20 @@ The project at https://github.com/jbruce12000/kiln-controller was reviewed for f
 
 The reference project declares GPL-3.0 in its license documentation. Do not copy or adapt its source files into this repository without a deliberate license decision and the corresponding notices/obligations. Feature concepts and independently written code are tracked here.
 
-## Planned and implemented feature set
+## Feature status
 
 | Feature | Current implementation status |
 |---|---|
-| Live temperature dashboard | Touchscreen dashboard; browser dashboard phase is in progress |
-| Live temperature/setpoint graph | Fixed-size telemetry ring buffer implemented; browser graph pending |
-| PID performance diagnostics | Offline P/I/D diagnostics module implemented; active zone controller is still hysteresis-based |
-| Firing history | Fixed-size summary history and raw persistence interface implemented; runtime integration in progress |
-| Scheduling | Bounded queue and due-reminder logic implemented; reminders never start a firing automatically |
-| Simulation | Independent four-zone thermal preview model implemented; it does not inject temperatures into the S3 or command outputs |
-| Energy and firing cost | Estimate from configured zone wattage, output command history, and energy rate; actual wattage/rate must be entered by the operator |
-| Configurable alerts | Bounded active/event ledger implemented; threshold evaluation and browser controls in progress |
-| PID tuning | Offline step-response recommendation calculator implemented; no automatic live full-power heat test |
-| Alerts and event history | Ledger model implemented; persistent runtime and UI integration pending |
+| Live temperature dashboard | Touchscreen and CYD-hosted browser dashboard |
+| Live temperature/setpoint graph | 1,800-sample RAM ring (10-second sampling) with browser graph and CSV export |
+| PID performance diagnostics | Offline P/I/D term calculator; active S3 zone loop is still hysteresis-based |
+| Firing history | 12-entry persisted summary history with CSV export; full-resolution per-firing log storage remains pending |
+| Scheduling | 8-entry persisted queue with due reminders; reminders never start a firing automatically |
+| Simulation | Independent four-zone preview model and browser controls; no simulated values enter the S3 or outputs |
+| Energy and firing cost | Estimate from configured zone wattage, output command history, and energy rate; not an electrical meter |
+| Configurable alerts | Dashboard rules for CAN loss, stale status, controller fault, sensor validity, and optional temperature warning |
+| PID tuning | Offline step-response recommendation calculator; no automatic live full-power heat test |
+| Event history/export | Bounded alert ledger, firing summaries, and CSV download endpoints |
 
 ## Safety and correctness boundaries
 
@@ -30,8 +30,9 @@ The reference project declares GPL-3.0 in its license documentation. Do not copy
 - PID diagnostics and tuning recommendations do not change the running controller's gains. The current S3 output algorithm is hysteresis, not PID.
 - The offline tuner expects a recorded process step response. It never drives heaters to generate that response.
 - Browser commands are authenticated requests to the S3 state machine. No browser endpoint can write a GPIO or force an output on.
+- Dashboard warning settings cannot disable S3 safety faults or the physical high-limit.
 - No feature in this document makes the controller certified or ready for live kiln operation.
 
 ## Validation
 
-Portable tests cover telemetry rollover, history serialization, energy calculations, schedule reminder behavior, alert activation/acknowledgement, simulation isolation, PID terms, and offline tuning recommendation validation.
+Portable tests cover telemetry rollover, history serialization, energy estimates, schedule reminder behavior, alert activation/acknowledgement, simulation isolation, PID terms, and offline tuning recommendation validation. Hardware display, CAN bus, thermocouple, relay, and safety-circuit tests remain outstanding.
