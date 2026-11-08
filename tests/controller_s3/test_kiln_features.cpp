@@ -96,7 +96,9 @@ static void testSimulationIsIndependent() {
   KilnSimulator simulator;
   SimulationConfig config = {20.0f, 20.0f, 100.0f, 20.0f};
   assert(simulator.begin(config, 0));
-  assert(simulator.update(3600000, 0x01));
+  for (uint32_t second = 1; second <= 60; ++second) {
+    assert(simulator.update(second * 60000UL, 0x01));
+  }
   assert(simulator.temperatureC(0) > 119.0f);
   assert(simulator.temperatureC(0) < 121.0f);
   assert(simulator.temperatureC(1) < 20.1f);
