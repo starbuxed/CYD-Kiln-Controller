@@ -24,26 +24,33 @@
 **Exit gate:** bench-tested with simulated sensors and low-voltage indicator loads only.
 
 ## Phase 2 — CYD operator interface and controller link
-- [ ] Confirm CYD display/touch drivers.
-- [ ] Implement framed, versioned, CRC-protected CYD-to-S3 communications.
-- [ ] Implement controller discovery, heartbeat, and reconnect status exchange.
-- [ ] Persist versioned zone and sensor configuration.
-- [ ] Display four temperatures, four setpoints, four zone states, four output commands, and alarms.
+- [x] Add first classic 2.8-inch ILI9341/XPT2046 touchscreen target and calibration screen.
+- [x] Implement CAN heartbeat, status, profile, sensor-mode, zone-config, and command path foundation.
+- [ ] Verify exact physical CYD revision, display/touch pin map, and S3 pin map.
+- [ ] Persist and verify full sensor/zone/output mapping configuration.
+- [ ] Display actual measured relay feedback and interlock state after feedback hardware exists.
 
 ## Phase 3 — Firing engine and profile management
-- [ ] Profile schema supports common ramp/soak schedules and optional zone offsets.
-- [ ] Validate setpoints, ramp rates, output limits, and sensor mappings for all zones.
-- [ ] Define stop/pause behavior.
-- [ ] Event log and firing history.
-- [ ] Simulation mode and fault injection.
+- [x] Ramp/soak profile transfer and S3-side validation foundation.
+- [x] Portable telemetry ring, firing-summary history, energy estimate, schedule reminder queue, alert ledger, simulation model, and PID diagnostic/tuning math.
+- [x] Profile upload request from touchscreen and browser JSON profile upload.
+- [ ] Full profile library with names, edit/read-back, backup, and import.
+- [ ] Integrate mapping module into the S3 firing core.
+- [ ] Complete continuous safety checks and test every fault transition.
+- [ ] Persistent detailed telemetry per firing and export.
+- [ ] Simulation and fault injection integrated into automated state-machine tests.
 - [ ] No automatic resume after power loss or fault.
 
 ## Phase 4 — Self-hosted web application
-- [ ] Local Wi-Fi/AP setup and mDNS.
-- [ ] REST API and live event stream.
-- [ ] Responsive four-zone dashboard.
-- [ ] Four-zone profile editor and history.
-- [ ] Authentication, authorization, validation, and audit events.
+- [x] CYD-hosted local WPA2 access point and HTTP server.
+- [x] Local mDNS hostname where supported.
+- [x] Authenticated REST API with CSRF check for state-changing requests.
+- [x] Responsive browser dashboard with live status polling and temperature graph.
+- [x] Profile upload, history summary, CSV export, alert ledger, schedule reminders, estimated energy/cost, isolated simulation, and offline PID tools.
+- [ ] Wi-Fi station-mode onboarding and credentials UI.
+- [ ] TLS/credential UX hardening for trusted-LAN deployment.
+- [ ] WebSocket/SSE push and complete profile editor/library.
+- [ ] Detailed telemetry retention and export for full-length firings.
 
 ## Phase 5 — Controller I/O commissioning
 - [ ] Test four digital outputs with low-voltage indicator loads.
