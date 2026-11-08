@@ -7,6 +7,8 @@
 #include <Preferences.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <sys/time.h>
+#include <esp_system.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -33,7 +35,15 @@ uint32_t runStartEpoch = 0;
 uint32_t runId = 1;
 uint32_t lastSampleMs = 0;
 uint32_t simulationOutputMask = 0;
-uint8_t lastControllerState = kiln::STATE_BOOT;
+struct AlertPreferences {
+  bool canLossEnabled;
+  bool staleStatusEnabled;
+  bool controllerFaultEnabled;
+  bool sensorInvalidEnabled;
+  bool temperatureWarningEnabled;
+  int16_t temperatureWarningDeciC;
+};
+AlertPreferences alertPreferences = {true, true, true, true, false, 0};
 int16_t peakTemperatures[4] = {0, 0, 0, 0};
 EnergyConfig energyConfig = {{0, 0, 0, 0}, 0};
 
@@ -102,8 +112,15 @@ hr{border:0;border-top:1px solid var(--line);margin:15px 0}
 <textarea id="profileJson" rows="8">[{"targetC":200,"rampCPerHour":60,"holdSeconds":0},{"targetC":600,"rampCPerHour":100,"holdSeconds":1800}]</textarea>
 <div class="actions"><button class="primary" onclick="uploadProfile()">Validate and send profile</button></div><div id="profileResult" class="muted"></div></div>
 </section>
-<section id="history"><div class="card"><h2>Firing history</h2><div id="historyTable"></div><button onclick="loadHistory()">Refresh history</button></div></section>
-<section id="alerts"><div class="card"><h2>Alerts and events</h2><div id="alertsTable"></div><button onclick="loadAlerts()">Refresh alerts</button></div></section>
+<section id="history"><div class="card"><h2>Firing history</h2><div id="historyTable"></div><div class="actions"><button onclick="loadHistory()">Refresh history</button><button onclick="location.href='/api/v1/history.csv'">Export CSV</button><button onclick="location.href='/api/v1/telemetry.csv'">Export recent telemetry CSV</button></div></div></section>
+<section id="alerts"><div class="card"><h2>Alert rules</h2><p class="muted">These settings affect dashboard warnings only. They cannot disable or change the S3 safety limits or hardwired protection.</p><div class="formgrid">
+<div><label><input id="alertCan" type="checkbox" checked> CAN link loss</label></div>
+<div><label><input id="alertStale" type="checkbox" checked> Stale controller status</label></div>
+<div><label><input id="alertFault" type="checkbox" checked> Controller fault</label></div>
+<div><label><input id="alertSensor" type="checkbox" checked> Missing/invalid enabled sensor</label></div>
+<div><label><input id="alertTemp" type="checkbox"> Temperature warning enabled</label></div>
+<div><label>Temperature warning threshold °C</label><input id="alertTempLimit" type="number" min="0" max="1800" value="0"></div>
+</div><div class="actions"><button class="primary" onclick="saveAlerts()">Save alert preferences</button></div></div><div class="card"><h2>Alerts and events</h2><div id="alertsTable"></div><button onclick="loadAlerts()">Refresh alerts</button></div></section>
 <section id="schedules"><div class="card"><h2>Scheduled firing reminders</h2>
 <div class="notice">Schedules notify you when a firing is due. They never start a kiln automatically, including after a reboot.</div>
 <div class="formgrid"><div><label>Profile ID</label><input id="scheduleProfile" value="local-profile"></div><div><label>Start date/time (controller local time)</label><input id="scheduleTime" type="datetime-local"></div></div>
@@ -143,7 +160,7 @@ async function api(path,method,body){
  var type=response.headers.get('content-type')||'';
  return type.indexOf('application/json')>=0?response.json():response.text();
 }
-async function init(){try{var session=await api('/api/v1/session');csrf=session.csrf;await refresh();setInterval(refresh,1500);}catch(e){setConnection(false,e.message);setTimeout(init,4000);}}
+async function init(){try{var session=await api('/api/v1/session');csrf=session.csrf;await api('/api/v1/time/sync','POST',{epoch:Math.floor(Date.now()/1000)});await refresh();setInterval(refresh,1500);}catch(e){setConnection(false,e.message);setTimeout(init,4000);}}
 function setConnection(ok,msg){var e=document.getElementById('connection');e.textContent=ok?'CONNECTED':(msg||'OFFLINE');e.className='status '+(ok?'good':'bad');}
 function fmtTemp(v,valid){return valid?(Number(v).toFixed(1)+' °C'):'INVALID / STALE';}
 async function refresh(){try{var s=await api('/api/v1/status');lastStatus=s;setConnection(s.linkConnected&&s.statusFresh);document.getElementById('state').textContent=s.stateName;
@@ -169,7 +186,8 @@ function drawGraph(){return api('/api/v1/telemetry').then(function(r){chartSampl
 async function command(name){if(name==='start'&&!confirm('Send START request to the S3 controller?'))return;if(name==='stop'&&!confirm('Stop the current firing?'))return;try{var r=await api('/api/v1/commands/'+name,'POST',{});alert(r.message||'Request sent to controller.');await refresh();}catch(e){alert(e.message);}}
 async function uploadProfile(){try{var segments=JSON.parse(document.getElementById('profileJson').value);var r=await api('/api/v1/profiles','POST',{segments:segments});document.getElementById('profileResult').textContent=r.message;}catch(e){document.getElementById('profileResult').textContent='Profile error: '+e.message;}}
 async function loadHistory(){try{var r=await api('/api/v1/history');var h='<table><tr><th>ID</th><th>Profile</th><th>Started</th><th>Duration</th><th>Peak temperatures °C</th><th>Energy</th></tr>';r.records.forEach(function(x){h+='<tr><td>'+x.id+'</td><td>'+esc(x.profileId)+'</td><td>'+x.startedEpoch+'</td><td>'+x.durationSeconds+' s</td><td>'+x.peaks.map(function(v){return (v/10).toFixed(1)}).join(' / ')+'</td><td>'+(x.energyMilliWh/1000000).toFixed(3)+' kWh</td></tr>';});document.getElementById('historyTable').innerHTML=h+'</table>';}catch(e){document.getElementById('historyTable').textContent=e.message;}}
-async function loadAlerts(){try{var r=await api('/api/v1/alerts');var h='<table><tr><th>Code</th><th>Severity</th><th>Active</th><th>Acknowledged</th><th>Time</th><th></th></tr>';r.events.forEach(function(x){h+='<tr><td>'+esc(x.name)+'</td><td>'+esc(x.severity)+'</td><td>'+x.active+'</td><td>'+x.acknowledged+'</td><td>'+x.elapsedMs+' ms</td><td><button onclick="ackAlert('+x.id+')">Acknowledge</button></td></tr>';});document.getElementById('alertsTable').innerHTML=h+'</table>';}catch(e){document.getElementById('alertsTable').textContent=e.message;}}
+async function loadAlerts(){try{var settings=await api('/api/v1/config/alerts');alertCan.checked=settings.canLossEnabled;alertStale.checked=settings.staleStatusEnabled;alertFault.checked=settings.controllerFaultEnabled;alertSensor.checked=settings.sensorInvalidEnabled;alertTemp.checked=settings.temperatureWarningEnabled;alertTempLimit.value=settings.temperatureWarningDeciC/10;var r=await api('/api/v1/alerts');var h='<table><tr><th>Code</th><th>Severity</th><th>Active</th><th>Acknowledged</th><th>Time</th><th></th></tr>';r.events.forEach(function(x){h+='<tr><td>'+esc(x.name)+'</td><td>'+esc(x.severity)+'</td><td>'+x.active+'</td><td>'+x.acknowledged+'</td><td>'+x.elapsedMs+' ms</td><td><button onclick="ackAlert('+x.id+')">Acknowledge</button></td></tr>';});document.getElementById('alertsTable').innerHTML=h+'</table>';}catch(e){document.getElementById('alertsTable').textContent=e.message;}}
+async function saveAlerts(){try{var r=await api('/api/v1/config/alerts','POST',{canLossEnabled:alertCan.checked,staleStatusEnabled:alertStale.checked,controllerFaultEnabled:alertFault.checked,sensorInvalidEnabled:alertSensor.checked,temperatureWarningEnabled:alertTemp.checked,temperatureWarningDeciC:Math.round(Number(alertTempLimit.value)*10)});alert('Alert preferences saved. S3 safety limits were not changed.');loadAlerts();}catch(e){alert(e.message);}}
 async function ackAlert(id){try{await api('/api/v1/alerts/'+id+'/ack','POST',{});loadAlerts();}catch(e){alert(e.message);}}
 async function loadSchedules(){try{var r=await api('/api/v1/schedules');var h='<table><tr><th>Profile</th><th>Due epoch</th><th>Status</th><th></th></tr>';r.entries.forEach(function(x){h+='<tr><td>'+esc(x.profileId)+'</td><td>'+x.startEpoch+'</td><td>'+x.state+'</td><td><button onclick="cancelSchedule('+x.id+')">Cancel</button></td></tr>';});document.getElementById('scheduleTable').innerHTML=h+'</table>';}catch(e){document.getElementById('scheduleTable').textContent=e.message;}}
 async function addSchedule(){try{var d=document.getElementById('scheduleTime').value;if(!d)throw new Error('Choose a date and time');var epoch=Math.floor(new Date(d).getTime()/1000);var r=await api('/api/v1/schedules','POST',{profileId:document.getElementById('scheduleProfile').value,startEpoch:epoch});alert(r.message);loadSchedules();}catch(e){alert(e.message);}}
@@ -260,6 +278,7 @@ const char* alertName(AlertCode code) {
     case ALERT_RUN_COMPLETED: return "RUN_COMPLETED";
     case ALERT_RUN_STOPPED: return "RUN_STOPPED";
     case ALERT_SCHEDULE_DUE: return "SCHEDULE_DUE";
+    case ALERT_TEMP_WARNING: return "TEMPERATURE_WARNING";
     default: return "NONE";
   }
 }
@@ -316,6 +335,16 @@ void saveEnergyConfig() {
   energyTracker.configure(energyConfig);
 }
 
+void saveAlertPreferences() {
+  preferences.putBytes("alertCfg", &alertPreferences, sizeof(alertPreferences));
+}
+
+void loadAlertPreferences() {
+  if (preferences.getBytesLength("alertCfg") == sizeof(alertPreferences)) {
+    preferences.getBytes("alertCfg", &alertPreferences, sizeof(alertPreferences));
+  }
+}
+
 void loadEnergyConfig() {
   if (preferences.getBytesLength("energyCfg") == sizeof(energyConfig)) {
     preferences.getBytes("energyCfg", &energyConfig, sizeof(energyConfig));
@@ -355,11 +384,14 @@ void updateFeatures() {
                      controller->statusFresh();
   energyTracker.update(nowMs, controller->outputCommandMask(), fresh);
 
-  alertLedger.setCondition(ALERT_CAN_LOST, ALERT_CRITICAL, !connected, nowMs);
+  alertLedger.setCondition(ALERT_CAN_LOST, ALERT_CRITICAL,
+                           alertPreferences.canLossEnabled && !connected, nowMs);
   alertLedger.setCondition(ALERT_STATUS_STALE, ALERT_WARNING,
-                           controller->hasStatus() && !fresh, nowMs);
+                           alertPreferences.staleStatusEnabled &&
+                               controller->hasStatus() && !fresh, nowMs);
   alertLedger.setCondition(ALERT_CONTROLLER_FAULT, ALERT_CRITICAL,
-                           controller->hasStatus() && controller->faultFlags() != 0,
+                           alertPreferences.controllerFaultEnabled &&
+                               controller->hasStatus() && controller->faultFlags() != 0,
                            nowMs);
 
   uint8_t requiredSensors = 0;
@@ -371,12 +403,32 @@ void updateFeatures() {
   const uint8_t missingSensors = static_cast<uint8_t>(
       requiredSensors & static_cast<uint8_t>(~controller->sensorValidMask()));
   alertLedger.setCondition(ALERT_SENSOR_INVALID, ALERT_CRITICAL,
-                           fresh && missingSensors != 0, nowMs);
+                           alertPreferences.sensorInvalidEnabled &&
+                               fresh && missingSensors != 0, nowMs);
+
+  int16_t hottestDeciC = INT16_MIN;
+  bool haveValidTemperature = false;
+  if (fresh) {
+    for (uint8_t i = 0; i < 4; ++i) {
+      if (controller->sensorValidMask() & (1U << i)) {
+        const int16_t value = controller->temperatureDeciC(i);
+        if (!haveValidTemperature || value > hottestDeciC) hottestDeciC = value;
+        haveValidTemperature = true;
+      }
+    }
+  }
+  const bool temperatureWarning =
+      alertPreferences.temperatureWarningEnabled &&
+      alertPreferences.temperatureWarningDeciC > 0 &&
+      haveValidTemperature &&
+      hottestDeciC >= alertPreferences.temperatureWarningDeciC;
+  alertLedger.setCondition(ALERT_TEMP_WARNING, ALERT_WARNING,
+                           temperatureWarning, nowMs, hottestDeciC);
 
   if (fresh) {
-    if (static_cast<uint32_t>(nowMs - lastSampleMs) >= 1000UL) {
+    if (static_cast<uint32_t>(nowMs - lastSampleMs) >= 10000UL) {
       TelemetrySample sample = {};
-      sample.elapsedMs = nowMs;
+      sample.elapsedMs = runActive ? static_cast<uint32_t>(nowMs - runStartMs) : nowMs;
       sample.validMask = controller->sensorValidMask();
       sample.outputMask = controller->outputCommandMask();
       sample.state = controller->controllerState();
@@ -384,7 +436,7 @@ void updateFeatures() {
         sample.temperatureDeciC[i] = controller->temperatureDeciC(i);
         sample.setpointDeciC[i] = controller->setpointDeciC(i);
       }
-      telemetry.push(sample, 1000);
+      telemetry.push(sample, 10000);
       lastSampleMs = nowMs;
     }
 
@@ -410,7 +462,6 @@ void updateFeatures() {
     } else if (runActive) {
       finishRun(state, nowMs);
     }
-    lastControllerState = state;
   }
 
   const time_t epoch = time(nullptr);
@@ -444,6 +495,7 @@ void handleStatus() {
   doc["statusFresh"] = controller && controller->hasStatus() && controller->statusFresh();
   doc["heartbeatAgeMs"] = controller ? controller->heartbeatAgeMs() : 0xFFFFFFFFUL;
   doc["activeAlerts"] = alertLedger.activeCount();
+  doc["telemetrySamples"] = telemetry.size();
   doc["energyConfigured"] = energyTracker.configured();
   doc["energyKWh"] = energyTracker.energyKWh();
   doc["estimatedCostMinor"] = energyTracker.estimatedCostMinor();
@@ -464,6 +516,8 @@ void handleStatus() {
     sensor["fault"] = fault;
     sensor["faultName"] = sensorFaultName(fault);
   }
+  doc["alertTemperatureWarningEnabled"] = alertPreferences.temperatureWarningEnabled;
+  doc["alertTemperatureWarningDeciC"] = alertPreferences.temperatureWarningDeciC;
   JsonArray sim = doc["simulationTemperaturesC"].to<JsonArray>();
   for (uint8_t i = 0; i < 4; ++i) sim.add(simulator.temperatureC(i));
   sendJson(doc);
@@ -584,10 +638,7 @@ void handleProfileUpload() {
     return;
   }
   const uint8_t count = static_cast<uint8_t>(segments.size());
-  if (!controller->beginProfileConfig(count)) {
-    server.send(503, "application/json", "{\"error\":\"Could not begin profile transfer\"}");
-    return;
-  }
+  kiln::RampSoakSegment parsed[kiln::MAX_PROFILE_SEGMENTS];
   uint8_t index = 0;
   for (JsonVariant segment : segments) {
     const float target = segment["targetC"] | NAN;
@@ -599,13 +650,20 @@ void handleProfileUpload() {
       server.send(400, "application/json", "{\"error\":\"Segment contains invalid target, ramp, or hold value\"}");
       return;
     }
+    parsed[index++] = {target, ramp, hold};
+  }
+  if (!controller->beginProfileConfig(count)) {
+    server.send(503, "application/json", "{\"error\":\"Could not begin profile transfer\"}");
+    return;
+  }
+  for (index = 0; index < count; ++index) {
     if (!controller->sendProfileSegment(index,
-          static_cast<int16_t>(lroundf(target * 10.0f)),
-          static_cast<int16_t>(lroundf(ramp * 10.0f)), hold)) {
+          static_cast<int16_t>(lroundf(parsed[index].targetC * 10.0f)),
+          static_cast<int16_t>(lroundf(parsed[index].rampCPerHour * 10.0f)),
+          parsed[index].holdSeconds)) {
       server.send(503, "application/json", "{\"error\":\"Segment transfer failed\"}");
       return;
     }
-    ++index;
   }
   const bool sent = controller->commitProfileConfig();
   JsonDocument response;
@@ -650,6 +708,105 @@ void handleCancelSchedule() {
   }
   saveSchedules();
   server.send(200, "application/json", "{\"cancelled\":true}");
+}
+
+void handleAlertConfigGet() {
+  if (!authorized()) return;
+  JsonDocument doc;
+  doc["canLossEnabled"] = alertPreferences.canLossEnabled;
+  doc["staleStatusEnabled"] = alertPreferences.staleStatusEnabled;
+  doc["controllerFaultEnabled"] = alertPreferences.controllerFaultEnabled;
+  doc["sensorInvalidEnabled"] = alertPreferences.sensorInvalidEnabled;
+  doc["temperatureWarningEnabled"] = alertPreferences.temperatureWarningEnabled;
+  doc["temperatureWarningDeciC"] = alertPreferences.temperatureWarningDeciC;
+  sendJson(doc);
+}
+
+void handleAlertConfigPost() {
+  if (!writeAuthorized()) return;
+  JsonDocument doc;
+  if (!parseBody(doc)) return;
+  AlertPreferences candidate = alertPreferences;
+  candidate.canLossEnabled = doc["canLossEnabled"] | candidate.canLossEnabled;
+  candidate.staleStatusEnabled = doc["staleStatusEnabled"] | candidate.staleStatusEnabled;
+  candidate.controllerFaultEnabled = doc["controllerFaultEnabled"] | candidate.controllerFaultEnabled;
+  candidate.sensorInvalidEnabled = doc["sensorInvalidEnabled"] | candidate.sensorInvalidEnabled;
+  candidate.temperatureWarningEnabled = doc["temperatureWarningEnabled"] | candidate.temperatureWarningEnabled;
+  const int warning = doc["temperatureWarningDeciC"] | candidate.temperatureWarningDeciC;
+  if (warning < 0 || warning > 18000) {
+    server.send(400, "application/json", "{\"error\":\"Temperature warning threshold must be 0 to 1800 C\"}");
+    return;
+  }
+  candidate.temperatureWarningDeciC = static_cast<int16_t>(warning);
+  alertPreferences = candidate;
+  saveAlertPreferences();
+  server.send(200, "application/json", "{\"saved\":true,\"safetyLimitsChanged\":false}");
+}
+
+void handleClockSync() {
+  if (!writeAuthorized()) return;
+  JsonDocument doc;
+  if (!parseBody(doc)) return;
+  const uint32_t epoch = doc["epoch"] | 0UL;
+  if (epoch < 1700000000UL || epoch > 4102444800UL) {
+    server.send(400, "application/json", "{\"error\":\"Invalid clock epoch\"}");
+    return;
+  }
+  struct timeval tv;
+  tv.tv_sec = static_cast<time_t>(epoch);
+  tv.tv_usec = 0;
+  if (settimeofday(&tv, nullptr) != 0) {
+    server.send(500, "application/json", "{\"error\":\"Could not set controller clock\"}");
+    return;
+  }
+  server.send(200, "application/json", "{\"clockSynchronized\":true}");
+}
+
+void handleTelemetryCsv() {
+  if (!authorized()) return;
+  server.sendHeader("Content-Disposition", "attachment; filename=kiln-telemetry.csv");
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "text/csv", "elapsed_ms,valid_mask,output_mask,state,tc1_c,tc1_setpoint_c,tc2_c,tc2_setpoint_c,tc3_c,tc3_setpoint_c,tc4_c,tc4_setpoint_c\n");
+  TelemetrySample sample;
+  char line[220];
+  for (uint16_t i = 0; i < telemetry.size(); ++i) {
+    if (!telemetry.getOldestFirst(i, sample)) continue;
+    snprintf(line, sizeof(line), "%lu,%u,%u,%u,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f,%.1f\n",
+      static_cast<unsigned long>(sample.elapsedMs), sample.validMask,
+      sample.outputMask, sample.state,
+      sample.temperatureDeciC[0] / 10.0f, sample.setpointDeciC[0] / 10.0f,
+      sample.temperatureDeciC[1] / 10.0f, sample.setpointDeciC[1] / 10.0f,
+      sample.temperatureDeciC[2] / 10.0f, sample.setpointDeciC[2] / 10.0f,
+      sample.temperatureDeciC[3] / 10.0f, sample.setpointDeciC[3] / 10.0f);
+    server.sendContent(line);
+  }
+  server.sendContent("");
+}
+
+void handleHistoryCsv() {
+  if (!authorized()) return;
+  server.sendHeader("Content-Disposition", "attachment; filename=kiln-history.csv");
+  server.setContentLength(CONTENT_LENGTH_UNKNOWN);
+  server.send(200, "text/csv", "id,started_epoch,duration_seconds,profile_id,tc1_peak_c,tc2_peak_c,tc3_peak_c,tc4_peak_c,energy_kwh,estimated_cost_minor,final_state\n");
+  FiringRecord record;
+  char line[220];
+  for (uint8_t i = 0; i < firingHistory.size(); ++i) {
+    if (!firingHistory.newestFirst(i, record)) continue;
+    snprintf(line, sizeof(line), "%lu,%lu,%lu,%s,%.1f,%.1f,%.1f,%.1f,%.6f,%lu,%u\n",
+      static_cast<unsigned long>(record.id),
+      static_cast<unsigned long>(record.startedEpoch),
+      static_cast<unsigned long>(record.durationSeconds),
+      record.profileId,
+      record.peakTemperatureDeciC[0] / 10.0f,
+      record.peakTemperatureDeciC[1] / 10.0f,
+      record.peakTemperatureDeciC[2] / 10.0f,
+      record.peakTemperatureDeciC[3] / 10.0f,
+      static_cast<double>(record.energyMilliWh) / 1000000.0,
+      static_cast<unsigned long>(record.estimatedCostMinor),
+      record.finalState);
+    server.sendContent(line);
+  }
+  server.sendContent("");
 }
 
 void handleEnergyConfig() {
@@ -779,17 +936,15 @@ void handleAcknowledgeAlert() {
 }
 
 void initializeNetwork() {
-  preferencesReady = preferences.begin("kiln-web", false);
+  if (!preferencesReady) preferencesReady = preferences.begin("kiln-web", false);
   const uint64_t mac = ESP.getEfuseMac();
   snprintf(apName, sizeof(apName), "KilnController-%06X",
            static_cast<uint32_t>(mac & 0xFFFFFFULL));
   if (preferencesReady &&
       preferences.getString("apPass", apPassword, sizeof(apPassword)) == 0) {
     const uint32_t randomA = esp_random();
-    const uint32_t randomB = esp_random();
     snprintf(apPassword, sizeof(apPassword), "K%08lx", static_cast<unsigned long>(randomA));
     preferences.putString("apPass", apPassword);
-    (void)randomB;
   }
   if (strlen(apPassword) < 8) {
     snprintf(apPassword, sizeof(apPassword), "K%08lx",
@@ -815,10 +970,15 @@ void initializeNetwork() {
     server.send_P(200, "text/html; charset=utf-8", INDEX_HTML);
   });
   server.on("/api/v1/session", HTTP_GET, handleSession);
+  server.on("/api/v1/time/sync", HTTP_POST, handleClockSync);
   server.on("/api/v1/status", HTTP_GET, handleStatus);
   server.on("/api/v1/telemetry", HTTP_GET, handleTelemetry);
   server.on("/api/v1/history", HTTP_GET, handleHistory);
+  server.on("/api/v1/history.csv", HTTP_GET, handleHistoryCsv);
+  server.on("/api/v1/telemetry.csv", HTTP_GET, handleTelemetryCsv);
   server.on("/api/v1/alerts", HTTP_GET, handleAlerts);
+  server.on("/api/v1/config/alerts", HTTP_GET, handleAlertConfigGet);
+  server.on("/api/v1/config/alerts", HTTP_POST, handleAlertConfigPost);
   server.on("/api/v1/schedules", HTTP_GET, handleSchedules);
   server.on("/api/v1/commands/start", HTTP_POST, [](){ handleCommand(kiln::CMD_START); });
   server.on("/api/v1/commands/pause", HTTP_POST, [](){ handleCommand(kiln::CMD_PAUSE); });
@@ -856,6 +1016,7 @@ void KilnWebApp::begin(ControllerLink& link) {
   loadHistory();
   loadSchedules();
   loadEnergyConfig();
+  loadAlertPreferences();
   initializeNetwork();
   Serial.println("Kiln web dashboard initialized. Browser session uses HTTP Basic authentication.");
 }
