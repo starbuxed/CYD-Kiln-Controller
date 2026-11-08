@@ -46,6 +46,7 @@ struct AlertPreferences {
 AlertPreferences alertPreferences = {true, true, true, true, false, 0};
 int16_t peakTemperatures[4] = {0, 0, 0, 0};
 EnergyConfig energyConfig = {{0, 0, 0, 0}, 0};
+static constexpr uint8_t MAX_WEB_PROFILE_SEGMENTS = 32;
 
 const char INDEX_HTML[] PROGMEM = R"HTML(
 <!doctype html>
@@ -528,7 +529,10 @@ void handleTelemetry() {
   JsonDocument doc;
   JsonArray samples = doc["samples"].to<JsonArray>();
   TelemetrySample sample;
-  for (uint16_t i = 0; i < telemetry.size(); ++i) {
+  const uint16_t sampleCount = telemetry.size();
+  const uint16_t stride = sampleCount > 180
+      ? static_cast<uint16_t>((sampleCount + 179) / 180) : 1;
+  for (uint16_t i = 0; i < sampleCount; i = static_cast<uint16_t>(i + stride)) {
     if (!telemetry.getOldestFirst(i, sample)) continue;
     JsonObject item = samples.add<JsonObject>();
     item["elapsedMs"] = sample.elapsedMs;
@@ -633,12 +637,17 @@ void handleProfileUpload() {
   if (!parseBody(doc)) return;
   JsonArray segments = doc["segments"].as<JsonArray>();
   if (segments.isNull() || segments.size() == 0 ||
-      segments.size() > kiln::MAX_PROFILE_SEGMENTS) {
+      segments.size() > MAX_WEB_PROFILE_SEGMENTS) {
     server.send(400, "application/json", "{\"error\":\"Profile must contain 1 to 32 segments\"}");
     return;
   }
   const uint8_t count = static_cast<uint8_t>(segments.size());
-  kiln::RampSoakSegment parsed[kiln::MAX_PROFILE_SEGMENTS];
+  struct ParsedProfileSegment {
+    float targetC;
+    float rampCPerHour;
+    uint32_t holdSeconds;
+  };
+  ParsedProfileSegment parsed[MAX_WEB_PROFILE_SEGMENTS];
   uint8_t index = 0;
   for (JsonVariant segment : segments) {
     const float target = segment["targetC"] | NAN;
@@ -650,7 +659,10 @@ void handleProfileUpload() {
       server.send(400, "application/json", "{\"error\":\"Segment contains invalid target, ramp, or hold value\"}");
       return;
     }
-    parsed[index++] = {target, ramp, hold};
+    parsed[index].targetC = target;
+    parsed[index].rampCPerHour = ramp;
+    parsed[index].holdSeconds = hold;
+    ++index;
   }
   if (!controller->beginProfileConfig(count)) {
     server.send(503, "application/json", "{\"error\":\"Could not begin profile transfer\"}");
@@ -926,8 +938,14 @@ void handlePidAdvice() {
 void handleAcknowledgeAlert() {
   if (!writeAuthorized()) return;
   const String path = server.uri();
-  const int slash = path.lastIndexOf('/');
-  const uint32_t id = static_cast<uint32_t>(path.substring(slash + 1).toInt());
+  const int lastSlash = path.lastIndexOf('/');
+  const int previousSlash = path.lastIndexOf('/', lastSlash - 1);
+  if (previousSlash < 0 || lastSlash <= previousSlash) {
+    server.send(404, "application/json", "{\"error\":\"Alert not found\"}");
+    return;
+  }
+  const uint32_t id = static_cast<uint32_t>(
+      path.substring(previousSlash + 1, lastSlash).toInt());
   if (!id || !alertLedger.acknowledge(id)) {
     server.send(404, "application/json", "{\"error\":\"Alert not found\"}");
     return;
@@ -1010,7 +1028,7 @@ void initializeNetwork() {
 
 void KilnWebApp::begin(ControllerLink& link) {
   controller = &link;
-  if (preferencesReady == false) {
+  if (!preferencesReady) {
     preferencesReady = preferences.begin("kiln-web", false);
   }
   loadHistory();
