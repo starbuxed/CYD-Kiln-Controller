@@ -108,13 +108,13 @@ static constexpr BoardProfile KILN_BOARD = {
 // GPIO map for the common classic 2.8-inch SPI CYD layout only.
 // Do not reuse this map for a different board family without schematic review.
 struct Cyd28ClassicPins {
-  static constexpr int8_t TFT_MISO = 12;
-  static constexpr int8_t TFT_MOSI = 13;
-  static constexpr int8_t TFT_SCLK = 14;
-  static constexpr int8_t TFT_CS = 15;
-  static constexpr int8_t TFT_DC = 2;
-  static constexpr int8_t TFT_RST = -1; // board reset
-  static constexpr int8_t TFT_BACKLIGHT = 21;
+  static constexpr int8_t DISPLAY_MISO = 12;
+  static constexpr int8_t DISPLAY_MOSI = 13;
+  static constexpr int8_t DISPLAY_SCLK = 14;
+  static constexpr int8_t DISPLAY_CS = 15;
+  static constexpr int8_t DISPLAY_DC = 2;
+  static constexpr int8_t DISPLAY_RST = -1; // board reset
+  static constexpr int8_t DISPLAY_BACKLIGHT = 21;
   static constexpr int8_t TOUCH_CLK = 25;
   static constexpr int8_t TOUCH_MOSI = 32;
   static constexpr int8_t TOUCH_MISO = 39;
