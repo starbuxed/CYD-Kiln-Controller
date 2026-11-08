@@ -60,9 +60,9 @@
 
 ## Validation status
 
-The last known GitHub Actions run passed the native tests and ESP32-S3/classic CYD builds before the touchscreen changes. The touchscreen dependencies and implementation require a fresh CI build.
+After the touchscreen changes, GitHub Actions passed the portable native test suite and both PlatformIO firmware builds: the ESP32-S3 controller and the classic 2.8-inch CYD touchscreen target. These are compile/host-test results only.
 
-No boards or kiln power hardware have been physically tested. This branch is not ready for live kiln operation.
+No physical CYD display/touch test, two-board CAN bench test, thermocouple test, relay-indicator test, or kiln power test has been performed. This branch is not ready for live kiln operation.
 
 ## Safety gate
 
