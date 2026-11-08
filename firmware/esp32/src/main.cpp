@@ -3,12 +3,14 @@
 #include "controller_link.h"
 #include "master_power_permit.h"
 #include "touch_ui.h"
+#include "web_app.h"
 
 #if KILN_CAN_PINMAP_AVAILABLE
 static kiln::CanStream controllerBus(kiln::CAN_ROLE_MAIN);
 #endif
 static ControllerLink controllerLink;
 static TouchUi touchUi;
+static KilnWebApp webApp;
 
 #ifndef KILN_MAIN_POWER_PERMIT_PIN
 #define KILN_MAIN_POWER_PERMIT_PIN -1
@@ -63,6 +65,7 @@ void setup() {
   }
 #endif
   touchUi.begin(controllerLink);
+  webApp.begin(controllerLink);
 }
 
 void loop() {
@@ -79,6 +82,7 @@ void loop() {
   }
 #endif
   touchUi.update();
+  webApp.update();
 #if KILN_CAN_PINMAP_AVAILABLE
   const bool mainPermit = !mainEmergencyLatched &&
       controllerLink.connected() && controllerLink.statusFresh() &&
