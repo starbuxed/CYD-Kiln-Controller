@@ -47,13 +47,15 @@ static void testEnergyEstimate() {
   energy.configure(config);
   energy.reset(0);
   energy.update(1000, 0x01, true);
-  energy.update(3601000, 0x01, true);
+  for (uint32_t second = 2; second <= 3601; ++second) {
+    energy.update(second * 1000UL, 0x01, true);
+  }
   assert(energy.energyKWh() > 0.99 && energy.energyKWh() < 1.01);
   assert(energy.estimatedCostMinor() >= 149);
   assert(energy.estimatedCostMinor() <= 151);
-  energy.update(7201000, 0x01, false);
+  energy.update(3602000, 0x01, false);
   const double before = energy.energyKWh();
-  energy.update(10801000, 0x01, true);
+  energy.update(3603000, 0x01, true);
   assert(energy.energyKWh() == before);
 }
 
