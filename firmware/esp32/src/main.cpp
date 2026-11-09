@@ -2,11 +2,15 @@
 #include "board_config.h"
 #include "controller_link.h"
 #include "master_power_permit.h"
+#include "touch_ui.h"
+#include "web_app.h"
 
 #if KILN_CAN_PINMAP_AVAILABLE
 static kiln::CanStream controllerBus(kiln::CAN_ROLE_MAIN);
-static ControllerLink controllerLink;
 #endif
+static ControllerLink controllerLink;
+static TouchUi touchUi;
+static KilnWebApp webApp;
 
 #ifndef KILN_MAIN_POWER_PERMIT_PIN
 #define KILN_MAIN_POWER_PERMIT_PIN -1
@@ -15,6 +19,7 @@ static ControllerLink controllerLink;
 #define KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH 1
 #endif
 static MasterPowerPermit mainPowerPermit;
+static bool mainEmergencyLatched = false;
 
 static void printBoardProfile() {
   Serial.println();
@@ -39,10 +44,8 @@ static void printBoardProfile() {
   Serial.println("CYD owns UI/web/SD; the ESP32-S3 owns sensor and output control.");
 }
 
-// Call this from the touchscreen emergency-stop control or a local trip input.
-// This immediately releases the CYD's own master-power permit relay; the CAN
-// emergency command is only a supplementary notification to the S3.
 void requestEmergencyShutdown() {
+  mainEmergencyLatched = true;
   mainPowerPermit.drop();
 #if KILN_CAN_PINMAP_AVAILABLE
   controllerLink.sendCommand(kiln::CMD_ESTOP);
@@ -55,19 +58,19 @@ void setup() {
   mainPowerPermit.begin(KILN_MAIN_POWER_PERMIT_PIN,
                         KILN_MAIN_POWER_PERMIT_ACTIVE_HIGH != 0);
   printBoardProfile();
-
 #if KILN_CAN_PINMAP_AVAILABLE
   if (!controllerLink.begin(controllerBus, KILN_CAN_TX_PIN, KILN_CAN_RX_PIN,
                             KILN_CAN_BITRATE)) {
     Serial.println("CAN initialization failed; firing must remain unavailable.");
   }
 #endif
+  touchUi.begin(controllerLink);
+  webApp.begin(controllerLink);
 }
 
 void loop() {
 #if KILN_CAN_PINMAP_AVAILABLE
   controllerLink.update();
-
   static uint32_t lastReport = 0;
   const uint32_t now = millis();
   if (static_cast<uint32_t>(now - lastReport) >= 1000) {
@@ -78,9 +81,11 @@ void loop() {
                   controllerLink.controllerState(), controllerLink.faultFlags());
   }
 #endif
+  touchUi.update();
+  webApp.update();
 #if KILN_CAN_PINMAP_AVAILABLE
-  const bool mainPermit = controllerLink.connected() &&
-      controllerLink.statusFresh() &&
+  const bool mainPermit = !mainEmergencyLatched &&
+      controllerLink.connected() && controllerLink.statusFresh() &&
       controllerLink.controllerState() == kiln::STATE_FIRING &&
       controllerLink.faultFlags() == 0;
 #else
