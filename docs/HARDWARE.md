@@ -90,3 +90,33 @@ The ESP32-S3 firmware will force its four control requests inactive on boot, res
 - [ ] Test all four outputs with low-voltage indicator loads before connecting relay modules.
 - [ ] Test sensor open/short, wrong-type, stale, and implausible readings.
 - [ ] Verify watchdog and fault-latch behavior.
+
+
+## Specific development-board purchase targets
+
+For the first bench build, use these exact board families rather than an arbitrary ESP32 clone:
+
+| Role | Recommended part | Quantity | Notes |
+|---|---|---:|---|
+| Touchscreen/main controller | **ESP32-2432S028R, 2.8-inch CYD, ILI9341 + XPT2046 resistive touch** | 1 | The current touchscreen firmware profile is for this version. Do not substitute the S028C capacitive-touch variant or an ST7789 clone without changing the board profile. |
+| Sensor/output processor | **Espressif ESP32-S3-DevKitC-1-N8R8** | 1 | ESP32-S3-WROOM-1, 8 MB flash, 8 MB PSRAM, 3.3 V SPI. The PlatformIO target is esp32-s3-devkitc-1. |
+| Thermocouple front end | **MAX31856 breakout/module** | 4 | One independent converter per probe, each with its own chip-select line. Supports K/J/N/R/S/T/E/B; confirm the exact breakout's voltage/level-shifting and isolation. |
+| CAN physical transceiver | **3.3 V SN65HVD230-compatible CAN transceiver module** | 2 | One transceiver per ESP32. The MCU TWAI peripheral is not a physical CAN transceiver. |
+| Heater control interface | **Four-channel protected/isolated driver matched to the chosen SSR/relay inputs** | 1 set | Exact module depends on input voltage, current, polarity and isolation of the selected switching equipment. No heater GPIO may directly drive a relay coil or load. |
+| Master-power permit interfaces | Two independent low-voltage permit relay/driver channels | 2 | K1 is controlled by the CYD and K2 by the S3. Their separate NO contacts are wired in series in the contactor-control path; they are not heater-zone outputs. |
+
+### Initial pin-map reservations
+
+The current firmware reference reserves these signals:
+
+- CYD: CAN TX GPIO27, CAN RX GPIO22. Display/touch uses GPIO2, 12–15, 21, 25, 32, 33, 36 and 39 on the classic reference layout.
+- ESP32-S3: CAN TX GPIO5, CAN RX GPIO4, master-power permit GPIO7.
+- ESP32-S3 thermocouple SPI clock/data and the four CS pins are **not yet assigned**.
+- ESP32-S3 four heater-control GPIOs are **not yet assigned**.
+- CYD master-power permit GPIO is **disabled by default** pending verification of the exact CYD revision and a safe interface point.
+
+Do not wire the unassigned channels by guesswork. The exact CYD revision must be identified from the PCB marking and controller/touch ICs before the display and CAN pin map is treated as final.
+
+### What not to buy yet
+
+Do not buy a generic four-channel mains relay board just because its listing says “ESP32 compatible.” First select the actual SSR/relay/contactor equipment and confirm its control-input voltage, input current, active polarity, isolation and feedback behavior. Then specify the four-channel driver interface. A four-channel heater interface is separate from the two master-power permit relay channels.
