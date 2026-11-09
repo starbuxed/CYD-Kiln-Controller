@@ -2,70 +2,73 @@
 
 ## Architecture
 
-- CYD ESP32: main operator interface, web server, Wi-Fi, SD-card assets, profiles, charts, and history.
-- ESP32-S3 secondary: four MAX31856 inputs, local control/safety logic, four heater output commands.
-- CAN 2.0A/TWAI: wired transport using one external transceiver on each board.
-- Master-power interlock: dedicated permit relay output from each board; normally-open contacts in series.
+- CYD ESP32: touchscreen, local browser dashboard, Wi-Fi AP, user/profile settings, recent telemetry and firing summaries.
+- ESP32-S3 secondary: four MAX31856 thermocouple inputs, local firing/safety/control state machine, four heater output commands.
+- CAN 2.0A/TWAI: inter-board transport with one external 3.3 V transceiver per board.
+- Master-power interlock: one independent permit relay from each board; normally-open contacts in series.
 - Physical latching E-stop and independent kiln high-limit remain hardware interlocks.
 
-## Existing control foundation
+## Implemented software foundations
 
-- Ramp/soak profile engine and four-zone hysteresis controller.
-- Four-channel sensor manager with modes Off, Log only, Log and control, Log and safety.
-- Combined safety monitoring for all sensors not set Off.
-- MAX31856 driver abstraction with per-channel thermocouple type selection.
-- Four low-voltage output abstractions; hardware GPIO mapping disabled pending verification.
-- Latched local safety fault management and no automatic restart.
-- Existing CRC-protected typed controller protocol and native tests.
-
-## Added on the CAN/safety branch
-
-- Classic CAN 2.0A TWAI stream adapter for ESP32 main and S3 secondary.
-- Protocol fragmentation/reassembly for classic CAN's 8-byte frame payload.
-- Per-CAN-identifier receive reassembly streams to avoid interleaved message corruption.
-- Heartbeats, CAN bus-health checks, timeout behavior, and command sequence checks retained over CAN.
-- Latched emergency-stop protocol command.
-- Independent master-power permit output abstraction on both boards.
-- CYD permit is enabled only when fresh S3 status says FIRING, CAN/heartbeat are healthy, and no fault is reported.
-- S3 permit is enabled only while locally FIRING, configured local heater outputs exist, safety sensors are valid, no control fault is latched, and CAN/host heartbeat is healthy.
-- Optional classic 2.8-inch CYD build profile uses onboard RGB GPIO16 as the master-permit driver signal; disabled in the default build.
-- Documentation for CAN wiring and series permit-contact architecture.
-- Native CAN fragmentation/reassembly test.
-
-## Touchscreen implementation added
-
-- Classic 2.8-inch ILI9341 display support using TFT_eSPI.
-- Separate XPT2046 touch SPI bus and three-point affine calibration persisted in NVS.
-- Live home dashboard with four thermocouple readings, sensor modes, S3 state, CAN status, and faults.
-- Four-segment ramp/soak editor, local profile persistence, and profile upload to the S3.
-- Per-sensor mode, thermocouple type, and calibration-offset controls.
-- Four zone hysteresis and setpoint-offset controls.
-- Start confirmation with front-end readiness checks; the S3 remains authoritative.
-- Pause, resume, stop, diagnostics, and latched touchscreen software E-stop request.
-
-## Not implemented or not yet verified
-
-- Continuous local safety monitoring while idle and paused still requires review/validation.
-- Startup-screen renderer, SD asset loader, icon/theme manager.
-- CYD Wi-Fi setup, embedded HTTP API, authentication, WebSocket updates.
-- S3-side nonvolatile settings storage and profile read-back.
-- Physical MAX31856 SPI/CS pin assignment and module validation.
-- Physical four heater relay output pin assignment and driver validation.
-- Exact CYD revision and GPIO16 LED-pad verification.
-- S3 DevKitC-1 pin mapping confirmation on the physical board.
-- Actual transceiver selection, CAN harness, termination, EMI, and two-board hardware test.
-- Relay contact feedback and contactor auxiliary-contact monitoring.
-- Physical safety-rated circuit design, E-stop/high-limit/contactor test.
-- End-to-end power-loss/watchdog testing and simulation integration.
+- Classic CAN transport, fragmentation/reassembly, heartbeat and timeout behavior.
+- CRC-protected typed protocol, sequence validation, configuration and command messages.
+- Four-channel sensor manager with Off, Log only, Log and control, Log and safety modes.
+- All non-Off sensors are included in the kiln-wide safety sensor mask; only Log and control sensors are eligible for PID/control.
+- MAX31856 driver abstraction and per-channel thermocouple type selection.
+- Four output abstractions with active-high/active-low configuration and inactive-by-default GPIO handling.
+- Ramp/soak profile engine and four independent hysteresis zone controllers.
+- Sensor/zone/output mapping validation module (not yet integrated into firing core).
+- Separate master-power permit abstraction on both MCUs.
+- CYD touchscreen for live status, profile entry, sensor settings, zone hysteresis, controller diagnostics and touch calibration.
+- CYD-hosted WPA2 access point and local browser dashboard with HTTP Basic Authentication and CSRF checks on write requests.
+- Browser dashboard with temperature graph, profile upload, firing-summary history, CSV exports, alerts, scheduled reminders, estimated energy/cost, isolated simulation preview and offline PID diagnostic/advisor tools.
+- Portable feature modules for telemetry buffering, history records, schedule queue, alerts, energy estimate, simulation and PID advisory calculations.
+- Native tests cover protocol, CAN fragmentation, control core, sensor manager, zone mapping, telemetry/history, estimated energy, reminders, alert ledger, simulation and PID advisory math.
 
 ## Validation status
 
-After the touchscreen changes, GitHub Actions passed the portable native test suite and both PlatformIO firmware builds: the ESP32-S3 controller and the classic 2.8-inch CYD touchscreen target. These are compile/host-test results only.
+On the corrected ArduinoJson dependency revision, GitHub Actions passed:
+- Portable native test suite.
+- ESP32-S3 firmware build.
+- Classic CYD touchscreen and web firmware build.
 
-No physical CYD display/touch test, two-board CAN bench test, thermocouple test, relay-indicator test, or kiln power test has been performed. This branch is not ready for live kiln operation.
+The immediately following change only updates hardware documentation. No physical hardware has been tested.
+
+## Hardware still not assigned or verified
+
+- Exact CYD model/revision in the user's possession.
+- ESP32-S3 DevKitC-1 physical module variant/pinout.
+- MAX31856 SPI SCLK/MISO/MOSI GPIOs and four separate chip-select GPIOs.
+- Four heater-output GPIOs and their external driver circuit.
+- CYD master-power permit output pin (disabled by default).
+- Actual MAX31856 modules, thermocouples, CAN transceivers, relay/SSR modules and control power.
+- CAN cabling, termination, EMC and ground/isolation scheme.
+- Relay/contactor auxiliary feedback.
+
+## Functional work remaining
+
+- Make S3 safety evaluation explicitly continuous while idle as well as during firing/paused states; verify that every enabled sensor's invalid/stale/faulted condition is handled exactly as intended.
+- Integrate configurable sensor-to-zone-to-output mapping into the live S3 control core.
+- Implement and test real PID zone control if PID is still the intended control algorithm. Current zone loop remains hysteresis-based; the new PID tools are diagnostic/advisory only.
+- Persist full S3-side sensor, zone, profile and safety configuration with versioning and validation after reboot.
+- Add profile names/library management, read-back and explicit controller acknowledgements.
+- Persist detailed per-firing telemetry. Current graph history is a bounded RAM ring; firing summaries are persisted in NVS.
+- Persist and review alert/event history; implement any alert output hardware (buzzer/beacon) that is selected.
+- Implement SD startup graphics/assets, themes/icons and asset management.
+- Implement Wi-Fi station-mode onboarding, credential-management UX and optional stronger LAN security/TLS.
+- Complete browser profile editor, live push updates (WebSocket/SSE), richer firing detail and report export.
+- Add relay feedback and contactor auxiliary-contact monitoring where supported.
+
+## Hardware commissioning still required
+
+- Verify actual board revisions and every GPIO against schematics.
+- Bench-test CAN with the two actual transceiver modules.
+- Bench-test all four thermocouple channels with known probes and open/short/wrong-type fault cases.
+- Test all four output channels into low-voltage indicator loads and verify reset/boot/brownout/fault inactive behavior.
+- Test each master permit independently, CAN-loss drop-out, controller power loss, watchdog/fault behavior, and the series NO contact path.
+- Test physical E-stop and independent high-limit directly interrupt the hardware safety path with both MCUs disconnected.
+- Have the final contactor/safety-relay and power circuit reviewed and commissioned by a qualified electrical professional.
 
 ## Safety gate
 
-Both master-power permit relays are OFF by default. The CYD permit remains disabled in the standard build until the exact CYD revision and output connection are verified. The secondary relay output pins and MAX31856 SPI/CS pins also remain disabled pending hardware configuration.
-
-START/RESUME must remain blocked unless verified sensor, output, communications, and hardware interlock conditions are present. This branch is not ready for live kiln use.
+The ESP32 GPIOs must never switch kiln mains or bare relay coils directly. The S3's four heater GPIOs and MAX31856 pins remain disabled pending exact hardware configuration. CYD K1 remains disabled in the default build. Do not connect kiln heating power. This is experimental firmware, not a certified kiln controller.
